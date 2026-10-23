@@ -32,6 +32,8 @@ struct UHDCategoryView: View {
     }
 }
 
+private struct SearchRequest: Hashable { let query: String; let revision: Int }
+
 struct CatalogueSearchView: View {
     @ObservedObject var index: CatalogueIndexStore
     @ObservedObject var catalogue: CatalogueStore
@@ -39,7 +41,8 @@ struct CatalogueSearchView: View {
     @Environment(\.scenePhase) private var phase
     @State private var query = ""
     @State private var page = 1
-    private var results: [CatalogueShow] { index.snapshot.search(query) }
+    @State private var results: [CatalogueShow] = []
+    @State private var searching = false
     private var pages: Int { max(1, (results.count + 29) / 30) }
     var body: some View {
         ScrollView {
@@ -59,12 +62,26 @@ struct CatalogueSearchView: View {
                             NavigationLink { CatalogueShowView(show: show, catalogue: catalogue, library: library) } label: { ShowCard(show: show) }.buttonStyle(ProgrammeCardStyle())
                         }
                     }
-                    if results.isEmpty { Text("No results.") }
+                    if searching { ProgressView("Searching…") }
+                    else if results.isEmpty { Text("No results.") }
                 }
             }.padding(60)
         }
         .searchable(text: $query, prompt: "Search")
-        .onChange(of: query) { _, _ in page = 1 }
+        .task(id: SearchRequest(query: query, revision: index.searchRevision)) {
+            page = 1
+            guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                results = []; searching = false; return
+            }
+            searching = true
+            do {
+                // Coalesce partial dictated words without delaying the text field.
+                try await Task.sleep(for: .milliseconds(120))
+                let matches = try await index.search(query)
+                try Task.checkCancellation()
+                results = matches; searching = false
+            } catch { if !Task.isCancelled { searching = false } }
+        }
         #if DEBUG
         .onAppear { if let preview = ProcessInfo.processInfo.environment["BEEB_SEARCH_QUERY"] { query = preview } }
         #endif
