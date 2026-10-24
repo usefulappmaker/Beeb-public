@@ -27,6 +27,7 @@ struct HomeView: View {
     private var usesSidebar: Bool { modern && modernNavigation == "Sidebar" }
     @State private var tab = BeebTab.home
     @StateObject private var homeState = HomeState()
+    @StateObject private var navigationMemory = NavigationFocusMemory()
     @State private var liveLaunch: LiveLaunch?
     @FocusState private var focusedTab: BeebTab?
     @FocusState private var menuIconFocused: Bool
@@ -64,8 +65,8 @@ struct HomeView: View {
         }.padding(.horizontal, 64).padding(.top, 48).padding(.bottom, 16)
     }
     @ViewBuilder private var navigationIcon: some View {
-        if usesSidebar { sidebarHeader.defaultFocus($menuIconFocused, true) }
-        else { horizontalHeader.defaultFocus($focusedTab, .home) }
+        if usesSidebar { sidebarHeader }
+        else { horizontalHeader.focusSection().defaultFocus($focusedTab, tab) }
     }
     private var horizontalHeader: some View {
         HStack(spacing: modern ? 32 : 30) {
@@ -93,16 +94,7 @@ struct HomeView: View {
                             }
                     }.buttonStyle(BeebTabStyle()).focused($focusedTab, equals: value).focusEffectDisabled()
                         .accessibilityAddTraits(tab == value ? .isSelected : [])
-                        .onMoveCommand { direction in
-                            guard tab == .home else { return }
-                            let values = visibleTabs, position = visibleTabs.firstIndex(of: value) ?? 0
-                            switch direction {
-                            case .down: homeState.heroFocusRequest += 1
-                            case .left: focusedTab = values[max(0, position - 1)]
-                            case .right: focusedTab = values[min(values.count - 1, position + 1)]
-                            default: break
-                            }
-                        }
+                        .accessibilityIdentifier("BeebTopbar" + value.rawValue)
                 }
             }.padding(modern ? 8 : 0)
                 .background {
@@ -113,8 +105,9 @@ struct HomeView: View {
     }
     private func menuItem(_ value: BeebTab) -> some View {
         BeebTabButton(tab: value, selected: tab, focus: $focusedTab) {
+            let changed = tab != value
             tab = value
-            closeSidebar()
+            closeSidebar(restore: !changed)
         }.onMoveCommand { direction in
             let values = visibleTabs
             let position = values.firstIndex(of: value) ?? 0
@@ -144,15 +137,32 @@ struct HomeView: View {
                 .onExitCommand { closeSidebar() }
         }.ignoresSafeArea()
     }
-    private func openSidebar() {
+    private func focusNavigation() {
+        // Cancel a pending Down-to-hero request before moving focus back to the menu.
+        homeState.heroFocusRequest = 0
         homeState.scrollTopRequest += 1
+        if usesSidebar { menuIconFocused = true } else { focusedTab = tab }
+    }
+    private func openSidebar() {
+        guard usesSidebar, !sidebarOpen else { return }
+        homeState.heroFocusRequest = 0
+        iconFocusRequest = 0
+        navigationMemory.capture()
         withAnimation(.easeOut(duration: 0.2)) { sidebarOpen = true }
     }
-    private func closeSidebar() {
+    private func closeSidebar(restore: Bool = true) {
+        guard sidebarOpen else { return }
         focusedTab = nil
-        withAnimation(.easeOut(duration: 0.2)) { sidebarOpen = false }
-        if tab == .home { homeState.heroFocusRequest += 1 }
-        else { iconFocusRequest += 1 }
+        menuIconFocused = false
+        withAnimation(.easeOut(duration: 0.2), completionCriteria: .removed) {
+            sidebarOpen = false
+        } completion: {
+            guard !sidebarOpen else { return }
+            if restore, navigationMemory.restore() { return }
+            navigationMemory.discard()
+            if tab == .home { homeState.heroFocusRequest += 1 }
+            else { iconFocusRequest += 1 }
+        }
     }
     var body: some View {
         NavigationStack {
@@ -161,7 +171,7 @@ struct HomeView: View {
                 if tab == .home && modern {
                     DiscoveryHome(catalogue: catalogue, library: library, state: homeState,
                                   header: navigationIcon, menuOpen: sidebarOpen,
-                                  focusHeader: { homeState.scrollTopRequest += 1; if usesSidebar { menuIconFocused = true } else { focusedTab = .home } })
+                                  focusHeader: focusNavigation)
                 } else {
                     VStack(spacing: 0) {
                         navigationIcon
@@ -178,7 +188,14 @@ struct HomeView: View {
                         }.id(tab).disabled(sidebarOpen)
                     }
                 }
-            }.modifier(RootBackAction(active: tab != .home) {
+            }.background {
+                NavigationEdgeObserver(enabled: !sidebarOpen && focusedTab == nil && !menuIconFocused,
+                                       onLeft: usesSidebar ? openSidebar : nil,
+                                       onUp: modern && !usesSidebar ? focusNavigation : nil)
+            }.environment(\.beebFocusMemory, navigationMemory)
+            .environment(\.beebOpenSidebar, usesSidebar ? openSidebar : nil)
+            .environment(\.beebFocusNavigation, modern && !usesSidebar ? focusNavigation : nil)
+            .modifier(RootBackAction(active: tab != .home) {
                 sidebarOpen = false; tab = .home; homeState.heroFocusRequest += 1
             }).overlay(alignment: .topLeading) {
                 if usesSidebar && sidebarOpen { sidebar.transition(.move(edge: .leading).combined(with: .opacity)) }
@@ -188,6 +205,15 @@ struct HomeView: View {
             guard iconFocusRequest > 0 else { return }
             do { try await Task.sleep(nanoseconds: 150_000_000) } catch { return }
             if !sidebarOpen && tab != .home { menuIconFocused = true }
+        }
+        .onChange(of: menuIconFocused) { _, focused in
+            if focused && !sidebarOpen {
+                let target = $menuIconFocused
+                navigationMemory.remember { target.wrappedValue = true }
+            }
+        }
+        .onChange(of: focusedTab) { _, focused in
+            if focused != nil { homeState.heroFocusRequest = 0 }
         }
         .onChange(of: homescreenLayout) { _, _ in sidebarOpen = false; focusedTab = nil; menuIconFocused = false }
         .onChange(of: display4KUHDCategory) { _, visible in
@@ -291,7 +317,9 @@ struct DiscoveryHome<Header: View>: View {
     let header: Header
     let menuOpen: Bool
     let focusHeader: () -> Void
+    @Environment(\.beebFocusMemory) private var focusMemory
     @Environment(\.scenePhase) private var phase
+    @Environment(\.beebOpenSidebar) private var openSidebar
     @FocusState private var bannerFocused: Bool
     @FocusState private var focusedCard: String?
     @State private var visible = false
@@ -317,24 +345,29 @@ struct DiscoveryHome<Header: View>: View {
                             Text(feature.synopsis).font(.system(size: 27)).lineLimit(2)
                                 .foregroundStyle(.white.opacity(0.85)).frame(maxWidth: 950, alignment: .leading)
                             if feature.show.uhdListed == true { UHDListedBadge(hdr: false) }
-                            NavigationLink {
-                                CatalogueShowView(show: feature.show, catalogue: catalogue, library: library)
-                            } label: {
-                                Label("Watch now", systemImage: "play.fill")
-                            }.buttonStyle(CinematicActionStyle()).focused($bannerFocused).disabled(menuOpen).padding(.top, 8)
-                                .onMoveCommand { direction in
-                                    guard bannerFocused else { return }
-                                    if direction == .left { advanceBanner(by: -1) }
-                                    if direction == .right { advanceBanner(by: 1) }
-                                    if direction == .up { focusHeader() }
-                                }
-                                .accessibilityAdjustableAction { direction in
-                                    switch direction {
-                                    case .increment: advanceBanner(by: 1)
-                                    case .decrement: advanceBanner(by: -1)
-                                    @unknown default: break
+                            HStack {
+                                NavigationLink {
+                                    CatalogueShowView(show: feature.show, catalogue: catalogue, library: library)
+                                } label: {
+                                    Label("Watch now", systemImage: "play.fill")
+                                }.buttonStyle(CinematicActionStyle()).focused($bannerFocused).disabled(menuOpen).padding(.top, 8)
+                                    .onMoveCommand { direction in
+                                        guard bannerFocused else { return }
+                                        if direction == .left {
+                                            if let openSidebar { openSidebar() } else { advanceBanner(by: -1) }
+                                        }
+                                        if direction == .right { advanceBanner(by: 1) }
+                                        if direction == .up { bannerFocused = false; focusHeader() }
                                     }
-                                }
+                                    .accessibilityAdjustableAction { direction in
+                                        switch direction {
+                                        case .increment: advanceBanner(by: 1)
+                                        case .decrement: advanceBanner(by: -1)
+                                        @unknown default: break
+                                        }
+                                    }
+                                Spacer(minLength: 0)
+                            }.frame(maxWidth: .infinity, alignment: .leading).focusSection()
                             Spacer(minLength: 0)
                         }.frame(maxWidth: .infinity, minHeight: 440, maxHeight: 440, alignment: .leading)
                              .padding(.leading, menuOpen ? 368 : 64).padding(.trailing, 64).padding(.top, 26).padding(.bottom, 50)
@@ -371,12 +404,24 @@ struct DiscoveryHome<Header: View>: View {
             scroll.scrollTo("home-header", anchor: .top)
         }
         .onChange(of: bannerFocused) { _, focused in
-            if focused { scroll.scrollTo("home-header", anchor: .top) }
+            if focused {
+                let target = $bannerFocused
+                focusMemory?.remember { target.wrappedValue = true }
+                scroll.scrollTo("home-header", anchor: .top)
+            }
+        }
+        .onChange(of: focusedCard) { _, card in
+            if let card {
+                let target = $focusedCard
+                focusMemory?.remember { target.wrappedValue = card }
+            }
         }
         .task(id: state.heroFocusRequest) {
             guard state.heroFocusRequest > 0, feature != nil, !menuOpen else { return }
             scroll.scrollTo("home-header", anchor: .top)
+            let request = state.heroFocusRequest
             do { try await Task.sleep(nanoseconds: 150_000_000) } catch { return }
+            guard state.heroFocusRequest == request, !menuOpen else { return }
             bannerFocused = true
             scroll.scrollTo("home-header", anchor: .top)
         }
@@ -527,25 +572,27 @@ private struct ClassicDiscoveryHome: View {
 }
 @MainActor final class BrowseState: ObservableObject { @Published var mode = "Categories" }
 struct BrowseView: View {
-    @AppStorage("display4KUHDCategory") private var display4KUHDCategory = true
+    @Environment(\.beebFocusMemory) private var focusMemory
+    @Environment(\.beebOpenSidebar) private var openSidebar
+    @Environment(\.beebFocusNavigation) private var focusNavigation
     @ObservedObject var catalogue: CatalogueStore
     @ObservedObject var library: Library
     @ObservedObject var index: CatalogueIndexStore
+    @AppStorage("display4KUHDCategory") private var display4KUHDCategory = true
     @StateObject private var state = BrowseState()
     @FocusState private var categoryFocus: String?
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 30) {
                 Text("Browse").font(.system(size: 48, weight: .bold))
-                Picker("Browse by", selection: $state.mode) {
-                    Text("Categories").tag("Categories"); Text("A–Z").tag("A–Z")
-                }.pickerStyle(.segmented).frame(width: 520)
+                BeebNavigationSegments(title: "Browse by", options: ["Categories", "A–Z"], selection: $state.mode)
+                    .frame(width: 520)
                 if state.mode == "Categories" {
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 24), count: 3), spacing: 24) {
                         if display4KUHDCategory {
                             NavigationLink { UHDCategoryView(index: index, catalogue: catalogue, library: library) } label: {
                                 CategoryTile(title: "4K UHD", icon: "4k.tv")
-                            }.buttonStyle(ProgrammeCardStyle())
+                            }.buttonStyle(ProgrammeCardStyle()).rememberSidebarFocus()
                         }
                         ForEach(catalogue.genres) { genre in
                             NavigationLink { ProgrammePage(title: genre.title, category: genre.id, letter: nil, catalogue: catalogue, library: library) } label: {
@@ -558,11 +605,16 @@ struct BrowseView: View {
                         ForEach(CatalogueAPI.letters, id: \.self) { letter in
                             NavigationLink { ProgrammePage(title: letter.uppercased(), category: nil, letter: letter, catalogue: catalogue, library: library) } label: {
                                 Text(letter.uppercased()).font(.title2).frame(maxWidth: .infinity, minHeight: 75)
-                            }
+                            }.rememberSidebarFocus()
                         }
                     }
                 }
             }.padding(.horizontal, 60).padding(.top, 24).padding(.bottom, 60)
+        }.onChange(of: categoryFocus) { _, category in
+            if let category {
+                let target = $categoryFocus
+                focusMemory?.remember { target.wrappedValue = category }
+            }
         }
     }
 }
@@ -615,7 +667,7 @@ struct ProgrammePage: View {
                 }
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 330), spacing: 28)], spacing: 30) {
                     ForEach(Array(page.shows.enumerated()), id: \.element.id) { position, show in
-                        NavigationLink { CatalogueShowView(show: show, catalogue: catalogue, library: library) } label: { ShowCard(show: show) }.buttonStyle(ProgrammeCardStyle())
+                        NavigationLink { CatalogueShowView(show: show, catalogue: catalogue, library: library) } label: { ShowCard(show: show) }.buttonStyle(ProgrammeCardStyle()).rememberSidebarFocus()
                             .task {if position >= page.shows.count-6 {await page.next(category:category,letter:letter)}}
                     }
                 }
@@ -703,6 +755,8 @@ struct CatalogueShowView: View {
     @ObservedObject var library: Library
     var preferUHDSeries = false
     @StateObject private var state = ShowState()
+    @StateObject private var bookmarkFocus = BookmarkFocusDestination()
+    @State private var episodeColumns = 5
     @FocusState private var focusedEpisode: String?
     var current: CatalogueShow { state.show ?? show }
     var orderedSeries: [CatalogueSeries] { EpisodeSequence.orderedSeries(current.series) }
@@ -718,7 +772,8 @@ struct CatalogueShowView: View {
                 HStack {
                     Text(current.title).font(.largeTitle).bold(); Spacer()
                     ProgrammeBookmarkButton(show: current, library: library)
-                }
+                        .background(BookmarkFocusAnchor(destination: bookmarkFocus))
+                }.focusSection()
                 Text(current.summary).font(.title3).foregroundStyle(.secondary)
                 if state.show == nil && state.error == nil { ProgressView("Getting series and episodes…") }
                 if let error = state.error { Text(error).foregroundStyle(.orange); Button("Retry") { state.retry += 1 } }
@@ -743,6 +798,16 @@ struct CatalogueShowView: View {
                     ForEach(visibleEpisodes) { episode in
                         Button { state.selection = episode.programme } label: { ProgrammeCard(programme: episode.programme) }.buttonStyle(ProgrammeCardStyle()).focused($focusedEpisode, equals: episode.id)
                     }
+                }
+                .background {
+                    GeometryReader { geometry in
+                        Color.clear.onAppear { episodeColumns = max(1, Int((geometry.size.width + 30) / 360)) }
+                            .onChange(of: geometry.size.width) { _, width in episodeColumns = max(1, Int((width + 30) / 360)) }
+                    }
+                }
+                .background(alignment: .top) {
+                    WideBookmarkFocusGuide(destination: bookmarkFocus, enabled: visibleEpisodes.prefix(episodeColumns).contains { $0.id == focusedEpisode })
+                        .frame(height: 24).offset(y: -26)
                 }
                 if state.show != nil && selectedEpisodes.isEmpty { Text("No episodes are currently available.").foregroundStyle(.secondary) }
             }.padding(60)
@@ -774,7 +839,7 @@ struct SavedProgrammes: View {
                 if library.saved.isEmpty { Text("Save a programme to follow all of its series and episodes here.").foregroundStyle(.secondary) }
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 330))], spacing: 30) {
                     ForEach(library.saved) { show in
-                        NavigationLink { CatalogueShowView(show: show, catalogue: catalogue, library: library) } label: { ShowCard(show: show) }.buttonStyle(ProgrammeCardStyle())
+                        NavigationLink { CatalogueShowView(show: show, catalogue: catalogue, library: library) } label: { ShowCard(show: show) }.buttonStyle(ProgrammeCardStyle()).rememberSidebarFocus()
                     }
                 }
             }.padding(60)
@@ -796,7 +861,6 @@ struct LiveView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 30) {
                 Text("Live channels").font(.largeTitle).bold()
-                Text("Watch now • quality adjusts to the live stream BBC supplies").foregroundStyle(.secondary)
                 if state.channels.isEmpty && state.error == nil { ProgressView("Getting channels…") }
                 if let error = state.error { Text(error).foregroundStyle(.orange); Button("Retry channels") { state.retry += 1 } }
                 if let error = playback.error { Text(error).foregroundStyle(.orange) }
@@ -810,7 +874,7 @@ struct LiveView: View {
                                     .frame(maxWidth: .infinity, minHeight: 60, maxHeight: 60, alignment: .topLeading)
                                 Text(channel.title).font(.callout).foregroundStyle(.secondary)
                             }.padding(12).frame(maxWidth: .infinity, alignment: .leading)
-                        }.buttonStyle(ProgrammeCardStyle()).disabled(playback.loading)
+                        }.buttonStyle(ProgrammeCardStyle()).disabled(playback.loading).rememberSidebarFocus()
                     }
                 }
             }.padding(60)
@@ -848,8 +912,10 @@ struct LiveView: View {
     }
 }
 struct SettingsView: View {
-    @AppStorage("display4KUHDCategory") private var display4KUHDCategory = true
+    @Environment(\.beebOpenSidebar) private var openSidebar
+    @Environment(\.beebFocusNavigation) private var focusNavigation
     @ObservedObject var catalogue: CatalogueStore
+    @AppStorage("display4KUHDCategory") private var display4KUHDCategory = true
     @AppStorage("homescreenLayout") private var homescreenLayout = "Modern"
     @AppStorage("modernNavigation") private var modernNavigation = "Sidebar"
     @AppStorage("bbcOneRegion") private var bbcOne = "bbc_one_london"
@@ -860,29 +926,25 @@ struct SettingsView: View {
                 Text("Settings").font(.largeTitle).bold()
                 VStack(alignment: .leading, spacing: 24) {
                     Text("Homescreen Layout").font(.title2).bold()
-                    Picker("Homescreen Layout", selection: $homescreenLayout) {
-                        Text("Modern").tag("Modern")
-                        Text("Classic").tag("Classic")
-                    }.pickerStyle(.segmented).frame(width: 700).accessibilityIdentifier("HomescreenLayoutPicker")
+                    BeebNavigationSegments(title: "Homescreen Layout", options: ["Modern", "Classic"], selection: $homescreenLayout)
+                        .frame(width: 700).accessibilityIdentifier("HomescreenLayoutPicker")
                     if homescreenLayout == "Modern" {
                         Text("Navigation").font(.headline).foregroundStyle(.secondary)
-                        Picker("Modern Navigation", selection: $modernNavigation) {
-                            Text("Topbar").tag("Topbar")
-                            Text("Sidebar").tag("Sidebar")
-                        }.pickerStyle(.segmented).frame(width: 700).accessibilityIdentifier("ModernNavigationPicker")
+                        BeebNavigationSegments(title: "Modern Navigation", options: ["Topbar", "Sidebar"], selection: $modernNavigation)
+                            .frame(width: 700).accessibilityIdentifier("ModernNavigationPicker")
                     }
                 }.padding(32).frame(maxWidth: .infinity, alignment: .leading)
                     .background(.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 24))
                 Toggle("Display 4K UHD category", isOn: $display4KUHDCategory)
-                    .accessibilityIdentifier("Display4KUHDCategoryToggle")
+                    .accessibilityIdentifier("Display4KUHDCategoryToggle").rememberSidebarFocus()
                 Text("Playback automatically selects the best available quality, including 4K HDR when available. Live channel quality adapts to the stream BBC supplies.").foregroundStyle(.secondary)
                 NavigationLink {
                     RegionSelectionView(title: "BBC One region", choices: RegionalChannels.bbcOne, selection: $bbcOne)
-                } label: { RegionSettingLabel(title: "BBC One region", value: RegionalChannels.bbcOne.first { $0.id == bbcOne }?.title ?? "London") }
+                } label: { RegionSettingLabel(title: "BBC One region", value: RegionalChannels.bbcOne.first { $0.id == bbcOne }?.title ?? "London") }.rememberSidebarFocus()
                 NavigationLink {
                     RegionSelectionView(title: "BBC Two version", choices: RegionalChannels.bbcTwo, selection: $bbcTwo)
-                } label: { RegionSettingLabel(title: "BBC Two version", value: RegionalChannels.bbcTwo.first { $0.id == bbcTwo }?.title ?? "England / Scotland") }
-                Button("Refresh homepage") { Task { await catalogue.refreshHome() } }.disabled(catalogue.loading)
+                } label: { RegionSettingLabel(title: "BBC Two version", value: RegionalChannels.bbcTwo.first { $0.id == bbcTwo }?.title ?? "England / Scotland") }.rememberSidebarFocus()
+                Button("Refresh homepage") { Task { await catalogue.refreshHome() } }.disabled(catalogue.loading).rememberSidebarFocus()
                 Text("Programme listings load only when you select a category or letter. Series and episodes load when you open a programme. Saved programmes include all their series.")
                 if let warning = catalogue.storageWarning { Text(warning).foregroundStyle(.orange) }
                 UHDSetupView()

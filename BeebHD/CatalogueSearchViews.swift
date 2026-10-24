@@ -17,13 +17,13 @@ struct UHDCategoryView: View {
                     Spacer()
                     Button { index.requestRefresh() } label: {
                         Label("Check for updates", systemImage:"arrow.clockwise")
-                    }.disabled(index.loading)
+                    }.disabled(index.loading).rememberSidebarFocus()
                 }
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 330), spacing: 28)], spacing: 30) {
                     ForEach(shows) { show in
                         NavigationLink { CatalogueShowView(show: show, catalogue: catalogue, library: library, preferUHDSeries: true) } label: {
                             ShowCard(show: show)
-                        }.buttonStyle(ProgrammeCardStyle())
+                        }.buttonStyle(ProgrammeCardStyle()).rememberSidebarFocus()
                     }
                 }
                 if shows.isEmpty && !index.loading { Text("No UHD listings are currently saved. Check for updates to retry.") }
@@ -49,14 +49,14 @@ struct CatalogueSearchView: View {
                         Text("\(results.count) \(results.count == 1 ? "result" : "results")").font(.title3)
                         Spacer()
                         if pages > 1 {
-                            Button("Previous") { page -= 1 }.disabled(page <= 1)
+                            Button("Previous") { page -= 1 }.disabled(page <= 1).rememberSidebarFocus()
                             Text("\(min(page, pages)) / \(pages)")
-                            Button("Next") { page += 1 }.disabled(page >= pages)
+                            Button("Next") { page += 1 }.disabled(page >= pages).rememberSidebarFocus()
                         }
                     }
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 330), spacing: 28)], spacing: 30) {
                         ForEach(Array(results.dropFirst((min(page, pages) - 1) * 30).prefix(30))) { show in
-                            NavigationLink { CatalogueShowView(show: show, catalogue: catalogue, library: library) } label: { ShowCard(show: show) }.buttonStyle(ProgrammeCardStyle())
+                            NavigationLink { CatalogueShowView(show: show, catalogue: catalogue, library: library) } label: { ShowCard(show: show) }.buttonStyle(ProgrammeCardStyle()).rememberSidebarFocus()
                         }
                     }
                     if results.isEmpty { Text("No results.") }

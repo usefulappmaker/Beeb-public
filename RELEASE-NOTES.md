@@ -1,24 +1,22 @@
-# Beeb 0.10.8 — homescreen choices, live captions and RED streams
+# Beeb 0.10.9 hotfix: one-step BBC UHD setup and navigation fixes
 
-Changes since public release 0.10.7:
+Changes since **0.10.8**:
 
-- Added Settings → Display 4K UHD category, enabled by default. Turn it off to hide 4K UHD in Classic/Modern Topbar, Modern Sidebar and Browse categories; the preference is saved independently of TwinVine setup.
-- Settings → Homescreen Layout: Classic or Modern. Modern offers Topbar or Sidebar and retains your preference.
-- Immersive modern artwork and navigation that scroll away as you browse; Beeb's icon glows pink while its text remains white.
-- Readable, icon-led category cards; continuous category and A–Z browsing; a single lazy grid for indexed UHD programmes.
-- RED in every live player's controls, opening Red Button and Red Button UHD when available. An unavailable additional stream leaves the current channel playing.
-- Native live subtitles using BBC's timed caption feed, confirmed working on Apple TV by the maintainer.
-- Back navigation to the previous screen, sidebar dismissal, and native Cancel/Back in Additional Streams without changing channel.
-- Current BBC episode discovery for more reliable HD/UHD loading and version selection.
+- **One-step UHD setup:** open **Settings → Enable BBC UHD** and select **Enable BBC UHD**. Setup runs entirely on Apple TV; no separate computer, downloader, Python installation, helper or copied setup URL is needed.
+- **Check before connecting:** Beeb validates the downloaded configuration and checks for a compatible BBC 4K HLG stream before saving the identity securely in the device-only Keychain. Cancelling or a failed check keeps your existing setup.
+- **Modern Topbar focus fixed:** pressing Down from any Home topbar heading goes directly to **Watch now**, without first jumping through a programme card. Returning Up to navigation is more reliable across pages.
+- **Sidebar shortcuts:** press Left at the left edge of a row or control to open the sidebar. Close it with Right, Back or the current section to return to the same item and scroll position.
+- **Saved is easier to reach:** pressing Up from any episode in the first row reaches the programme's bookmark, including programmes with several series.
+- **More reliable controls:** Browse and homescreen-layout options use native SwiftUI buttons with individual focus targets. Move between choices with Left/Right and click to select.
+- **Cleaner Live page:** removed the explanatory quality line below the heading.
+- **Simpler setup screen:** removed manual helper setup and setup-URL entry. Updated installation and UHD instructions for the new flow.
 
 ## Downloads
 
-- `Beeb-0.10.8-public-unsigned.ipa`: physical arm64 Apple TV, tvOS 17+. Sign both the app and the included Top Shelf extension using your own appropriate tvOS provisioning before installation. Standard Beeb icon; no TEST badge, signing profile or UHD identity.
-- `Beeb-0.10.8-public-source.zip`: matching GPL source, Xcode project, instructions and optional TwinVine setup helper.
-- Matching `.sha256` files.
+- **Beeb-0.10.9-public-unsigned.ipa** — Apple TV, tvOS 17+. Sign the app and included Top Shelf extension yourself before installation.
+- **Beeb-0.10.9-public-source.zip** — matching GPL source, Xcode project and instructions.
+- SHA-256 checksums for both downloads.
 
-Keep the same signing team and app identifier when updating to retain app/Keychain access. See INSTALL-IPA.md and INSTALL.md in the source package.
+Keep the same signing team and bundle identifier when updating. The app uses the normal Beeb icon and public identifiers. The existing **Display 4K UHD category** setting is retained.
 
-Catch-up UHD still needs your own working TwinVine setup. HD and normal live playback do not. Live Red Button UHD is event-dependent and only works when a compatible BBC event feed is supplied; it is separate from catch-up UHD setup. Channel/caption availability follows BBC's supplied feeds.
-
-Unofficial, not produced or endorsed by the BBC. GPL-3.0-or-later; attribution is retained in NOTICE.md.
+UHD setup no longer requires a computer; signing and installing the app remain separate steps. UHD needs an Apple TV 4K, compatible content/display connection and configuration currently accepted by BBC. Beeb downloads that configuration from the upstream service at setup time; no identity is embedded in these downloads. Service or identity changes can affect availability. Beeb remains independent and unofficial.

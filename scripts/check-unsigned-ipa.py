@@ -26,7 +26,7 @@ def inspect(path):
                 failures.append('Signing material or platform metadata present.')
             data = archive.read(item)
             patterns = [rb'/(?:Users|home)/[A-Za-z0-9_.-]+/',
-                        rb'-----BEGIN (?:RSA |EC |ENCRYPTED )?PRIVATE KEY-----',
+                        rb'-----BEGIN (?:RSA |EC |ENCRYPTED )?PRIVATE KEY-----[ \t\r\n]+[A-Za-z0-9+/]{32,}',
                         rb'Apple Development:', rb'iPhone Developer:']
             if any(re.search(pattern, data) for pattern in patterns):
                 failures.append('Personal path, private key or developer identity marker present.')

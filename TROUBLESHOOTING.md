@@ -9,10 +9,9 @@
 | App stops launching days later | Renew its provisioning by running from Xcode again. Personal Team signing is temporary. Keep the same bundle ID/team. |
 | Command line says Xcode is missing | Install full Xcode. For a nonstandard location, set DEVELOPER_DIR to that Xcode app's Contents/Developer folder. |
 | No programmes or playback unavailable | Check ordinary BBC availability/network access. Test another episode/channel. BBC service changes can affect this independent client. |
-| UHD-labelled episode plays HD | Confirm the identity is connected, the BBC currently offers a compatible rendition, and your own certificate remains accepted. Catalogue availability is distinct from received quality. |
-| Setup helper Python/dependency error | Create .venv-setup using SETUP-UHD.md; avoid global pip. |
-| No iP config found | Initialise your own TwinVine iP service or supply --config. A fresh TwinVine checkout is not a guarantee of usable UHD credentials. |
-| Setup times out | Check private IPv4 address, same network and Python's firewall access; restart helper for a fresh complete URL. |
+| UHD-labelled episode plays HD | Open Settings → Enable BBC UHD, check connected status and test another currently available UHD episode. Catalogue availability is distinct from received quality. |
+| Enable BBC UHD cannot download configuration | Check internet access and retry later. Existing saved setup is kept; a new connection depends on the upstream service. |
+| Enable BBC UHD fails validation or stream check | The upstream identity may be expired/not accepted, or a compatible BBC UHD stream may be unavailable. Retry later. Failed setup preserves the old identity. |
 | Captions absent | Select English in native controls; check this version has captions. Live captions depend on the feed. |
 | Automatic captions on rewind absent | Enable Show on Skip Back in Apple TV's Automatic Subtitles settings on a supported tvOS version; check a subtitle track is available. |
 | No Skip intro/recap button | BBC must supply a matching marker for the actual playing version, and playback must be within its interval. |

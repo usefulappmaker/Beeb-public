@@ -1,6 +1,6 @@
 # Install the unsigned IPA
 
-The prebuilt **Beeb-0.10.8-public-unsigned.ipa** is for physical Apple TV devices running tvOS 17+. It contains no developer signature or provisioning profile. **You must sign it with your own Apple account before installation.** It is not a one-click Apple TV download or an App Store/TestFlight build.
+The prebuilt **Beeb-0.10.9-public-unsigned.ipa** is for physical Apple TV devices running tvOS 17+. It contains no developer signature or provisioning profile. **You must sign it with your own Apple account before installation.** It is not a one-click Apple TV download or an App Store/TestFlight build.
 
 Download the IPA from **[GitHub Releases](https://github.com/usefulappmaker/Beeb-public/releases/latest)** alongside the matching public source ZIP. Source ZIPs intentionally exclude binaries. Both routes install the same public app functionality; [INSTALL.md](INSTALL.md) remains the recommended fully source-based route.
 
@@ -16,13 +16,13 @@ Download the IPA from **[GitHub Releases](https://github.com/usefulappmaker/Beeb
 Download the unsigned IPA and its SHA-256 file from the same release as the public source. Verify the checksum in Terminal from that download folder:
 
 ```sh
-shasum -a 256 -c Beeb-0.10.8-public-unsigned.sha256
+shasum -a 256 -c Beeb-0.10.9-public-unsigned.sha256
 ```
 
 For an additional structural check, with the source folder available:
 
 ```sh
-python3 scripts/check-unsigned-ipa.py /path/to/Beeb-0.10.8-public-unsigned.ipa
+python3 scripts/check-unsigned-ipa.py /path/to/Beeb-0.10.9-public-unsigned.ipa
 ```
 
 Replace the example path. The checker verifies a public-template arm64 tvOS app without a code signature/profile and scans for common personal-path/key markers. It is not a complete secret scanner or a signing tool.
@@ -66,7 +66,7 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun devicectl device 
 
 Replace the filenames, device identifier and Xcode location if necessary. Use the device identifier printed for your physical Apple TV. The app folder may have a different name if your signing tool changes it. The unsigned file itself will fail normal installation signature validation.
 
-Wake the Apple TV and open **Beeb**. Confirm HD playback first. For optional UHD, follow [SETUP-UHD.md](SETUP-UHD.md) using your own TwinVine setup. No UHD identity is included in the IPA.
+Wake the Apple TV and open **Beeb**. Confirm HD playback first. For optional UHD, follow [SETUP-UHD.md](SETUP-UHD.md) using **Settings → Enable BBC UHD** directly on Apple TV. No UHD identity is included in the IPA.
 
 ## Updates and privacy
 

@@ -50,7 +50,7 @@ struct DetailView: View {
                 if let duration = details.durationText, !duration.isEmpty { Text(duration).font(.callout).foregroundStyle(.secondary) }
             }
             if details.uhdListed == true && !UHDIdentityVault.isConfigured {
-                Text("Connect TwinVine in Settings to enable 4K playback. Until then, this episode will play in HD.")
+                Text("Choose Enable BBC UHD in Settings to set up 4K playback. Until then, this episode will play in HD.")
                     .font(.callout).foregroundStyle(.secondary)
             }
             if let guidance = programme.guidance, !guidance.isEmpty { Text(guidance).foregroundStyle(.orange) }

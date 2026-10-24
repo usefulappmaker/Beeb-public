@@ -54,6 +54,14 @@ E10800000000000000000001 = {isa = PBXFileReference; lastKnownFileType = sourceco
 E10800000000000000000002 = {isa = PBXBuildFile; fileRef = E10800000000000000000001;};
 E10800000000000000000003 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSubtitles.swift; sourceTree = "<group>";};
 E10800000000000000000004 = {isa = PBXBuildFile; fileRef = E10800000000000000000003;};
+E10900000000000000000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeIdentityPackage.swift; sourceTree = "<group>";};
+E10900000000000000000002 = {isa = PBXBuildFile; fileRef = E10900000000000000000001;};
+E10900000000000000000003 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TwinVineDirectSetup.swift; sourceTree = "<group>";};
+E10900000000000000000004 = {isa = PBXBuildFile; fileRef = E10900000000000000000003;};
+E10900000000000000000005 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TwinVineUHDProbe.swift; sourceTree = "<group>";};
+E10900000000000000000006 = {isa = PBXBuildFile; fileRef = E10900000000000000000005;};
+E11100000000000000000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationEdges.swift; sourceTree = "<group>";};
+E11100000000000000000002 = {isa = PBXBuildFile; fileRef = E11100000000000000000001;};
 /* Begin PBXBuildFile section */
 		0000000000000000000000C8 /* BeebHDApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000003E8 /* BeebHDApp.swift */; };
 		0000000000000000000000C9 /* BBCService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000003E9 /* BBCService.swift */; };
@@ -77,9 +85,9 @@ E10800000000000000000004 = {isa = PBXBuildFile; fileRef = E108000000000000000000
 		F10000000000000000000010 = {isa = PBXNativeTarget; name = BeebTopShelf; productName = BeebTopShelf; productReference = F10000000000000000000004; productType = "com.apple.product-type.app-extension"; buildConfigurationList = F10000000000000000000011; buildPhases = (F1000000000000000000000A, F1000000000000000000000B, F1000000000000000000000C); dependencies = (); buildRules = ();};
 		F10000000000000000000011 = {isa = XCConfigurationList; buildConfigurations = (F10000000000000000000012, F10000000000000000000013); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release;};
 		F10000000000000000000012 = {isa = XCBuildConfiguration; name = Debug; buildSettings = {
-                BEEB_APP_BUNDLE_IDENTIFIER = org.beebplayer.Beeb;APPLICATION_EXTENSION_API_ONLY = YES; CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = ""; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_FILE = TopShelf/Info.plist; PRODUCT_BUNDLE_IDENTIFIER = "$(BEEB_APP_BUNDLE_IDENTIFIER).TopShelf"; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = appletvos; SKIP_INSTALL = YES; SUPPORTED_PLATFORMS = "appletvos appletvsimulator"; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = 3; TVOS_DEPLOYMENT_TARGET = 17.0; MARKETING_VERSION = 0.10.8; CURRENT_PROJECT_VERSION = 36; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"; SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG; SWIFT_OPTIMIZATION_LEVEL = "-Onone";};};
+                BEEB_APP_BUNDLE_IDENTIFIER = org.beebplayer.Beeb;APPLICATION_EXTENSION_API_ONLY = YES; CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = ""; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_FILE = TopShelf/Info.plist; PRODUCT_BUNDLE_IDENTIFIER = "$(BEEB_APP_BUNDLE_IDENTIFIER).TopShelf"; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = appletvos; SKIP_INSTALL = YES; SUPPORTED_PLATFORMS = "appletvos appletvsimulator"; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = 3; TVOS_DEPLOYMENT_TARGET = 17.0; MARKETING_VERSION = 0.10.9; CURRENT_PROJECT_VERSION = 40; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"; SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG; SWIFT_OPTIMIZATION_LEVEL = "-Onone";};};
 		F10000000000000000000013 = {isa = XCBuildConfiguration; name = Release; buildSettings = {
-                BEEB_APP_BUNDLE_IDENTIFIER = org.beebplayer.Beeb;APPLICATION_EXTENSION_API_ONLY = YES; CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = ""; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_FILE = TopShelf/Info.plist; PRODUCT_BUNDLE_IDENTIFIER = "$(BEEB_APP_BUNDLE_IDENTIFIER).TopShelf"; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = appletvos; SKIP_INSTALL = YES; SUPPORTED_PLATFORMS = "appletvos appletvsimulator"; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = 3; TVOS_DEPLOYMENT_TARGET = 17.0; MARKETING_VERSION = 0.10.8; CURRENT_PROJECT_VERSION = 36; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";};};
+                BEEB_APP_BUNDLE_IDENTIFIER = org.beebplayer.Beeb;APPLICATION_EXTENSION_API_ONLY = YES; CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = ""; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_FILE = TopShelf/Info.plist; PRODUCT_BUNDLE_IDENTIFIER = "$(BEEB_APP_BUNDLE_IDENTIFIER).TopShelf"; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = appletvos; SKIP_INSTALL = YES; SUPPORTED_PLATFORMS = "appletvos appletvsimulator"; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = 3; TVOS_DEPLOYMENT_TARGET = 17.0; MARKETING_VERSION = 0.10.9; CURRENT_PROJECT_VERSION = 40; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";};};
 
 /* Begin PBXFileReference section */
 		000000000000000000000006 /* BeebHD.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BeebHD.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -131,7 +139,7 @@ E10800000000000000000004 = {isa = PBXBuildFile; fileRef = E108000000000000000000
                 000000000000000000000198,
                 000000000000000000000197,
                 E10800000000000000000001,
-                E10800000000000000000003,
+                E11100000000000000000001, E10900000000000000000001, E10900000000000000000003, E10900000000000000000005, E10800000000000000000003,
                 000000000000000000000194,
                 000000000000000000000191,
                 000000000000000000000192,
@@ -237,7 +245,7 @@ E10800000000000000000004 = {isa = PBXBuildFile; fileRef = E108000000000000000000
                 0000000000000000000001FC,
                 0000000000000000000001FB,
                 E10800000000000000000002,
-                E10800000000000000000004,
+                E11100000000000000000002, E10900000000000000000002, E10900000000000000000004, E10900000000000000000006, E10800000000000000000004,
                 0000000000000000000001F5,
                 0000000000000000000001F6,
 				0000000000000000000000C8 /* BeebHDApp.swift in Sources */,
@@ -284,7 +292,7 @@ E10800000000000000000004 = {isa = PBXBuildFile; fileRef = E108000000000000000000
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
                 CODE_SIGN_ENTITLEMENTS = BeebHD/BeebHD.entitlements;
-				CURRENT_PROJECT_VERSION = 36;
+				CURRENT_PROJECT_VERSION = 40;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -296,7 +304,7 @@ E10800000000000000000004 = {isa = PBXBuildFile; fileRef = E108000000000000000000
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.10.8;
+				MARKETING_VERSION = 0.10.9;
 				PRODUCT_BUNDLE_IDENTIFIER = "$(BEEB_APP_BUNDLE_IDENTIFIER)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = appletvos;
@@ -317,7 +325,7 @@ E10800000000000000000004 = {isa = PBXBuildFile; fileRef = E108000000000000000000
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
                 CODE_SIGN_ENTITLEMENTS = BeebHD/BeebHD.entitlements;
-				CURRENT_PROJECT_VERSION = 36;
+				CURRENT_PROJECT_VERSION = 40;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -329,7 +337,7 @@ E10800000000000000000004 = {isa = PBXBuildFile; fileRef = E108000000000000000000
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.10.8;
+				MARKETING_VERSION = 0.10.9;
 				PRODUCT_BUNDLE_IDENTIFIER = "$(BEEB_APP_BUNDLE_IDENTIFIER)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = appletvos;

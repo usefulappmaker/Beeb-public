@@ -1,6 +1,17 @@
 # Public edition verification
 
-## Current prepared release: 0.10.8 (36)
+## Release: 0.10.9 hotfix (40)
+
+- Based on public 0.10.8 and the approved TEST build 39 navigation/setup changes. Standard Beeb icon, public app/extension identifiers, URL scheme and device-only Keychain namespace are retained.
+- Enable BBC UHD is the visible one-step setup name. No manual helper URL entry, downloader or computer is required for UHD setup. Upstream attribution remains in NOTICE.md and SETUP-UHD.md.
+- Existing Display 4K UHD category preference remains available across Classic/Modern navigation and Browse.
+- Clean physical-device tvOS Release build and Debug simulator build passed. Unsigned app and Top Shelf have matching 0.10.9 (40), arm64 device executables, with no signing profiles or code-signature load commands.
+- Four source-boundary tests and three unsigned-payload structural tests passed. Source and final unsigned IPA scans passed, including known private installer/account/team/device and TEST-namespace checks.
+- The unchanged native identity packaging/validation logic inherits synthetic encryption, certificate matching, import and rejection coverage from TEST setup validation. The maintainer confirmed one-step setup on their physical Apple TV in TEST. The public signing/install path has not been repeated under another user's account.
+- All eight public-app simulator UI tests passed: one-step setup naming/manual removal, UHD category hidden in navigation and Browse, sidebar boundary/return and scroll retention, pushed-page isolation, topbar Up/Down and Saved from all first-row episode columns. The unsigned public IPA requires each installer's own signing; the matching TEST features were installed separately on the maintainer's Apple TV.
+- The maintainer approved the hotfix banner on 24 October 2026. It is prepared as a separate release image outside the source tree. Source, IPA and banner are packaged as release assets.
+
+## Historical release: 0.10.8 (36)
 
 - Public app is derived from the approved TEST feature set, with the original public Beeb icon, app/extension identities, live URL scheme and Keychain namespace.
 - Added a persisted Display 4K UHD category toggle, default on, shared by all navigation layouts and Browse. Hiding an active UHD tab returns Home and removes hidden focus targets. TwinVine setup is independent.

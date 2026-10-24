@@ -25,7 +25,7 @@ struct ContinueWatchingRow: View {
                     LazyHStack(spacing: 28) {
                         ForEach(history.records) { record in
                             Button { open(record) } label: { ContinueCard(record: record).frame(width: 390) }
-                                .buttonStyle(ProgrammeCardStyle()).disabled(state.preparing || playback.loading)
+                                .buttonStyle(ProgrammeCardStyle()).disabled(state.preparing || playback.loading).rememberSidebarFocus()
                                 .contextMenu { Button("Remove from Continue Watching") { history.remove(record.id) } }
                         }
                     }.padding(.vertical, 30).padding(.horizontal, 24)
