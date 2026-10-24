@@ -4,7 +4,12 @@ import SwiftUI
 @MainActor enum PlaybackActivity { static var active = false }
 
 @MainActor final class CatalogueIndexStore: ObservableObject {
-    @Published private(set) var snapshot = CatalogueIndexSnapshot()
+    @Published private(set) var snapshot = CatalogueIndexSnapshot() { didSet { searchRevision += 1 } }
+    @Published private(set) var searchRevision = 0
+    private let searchWorker = CatalogueSearchWorker()
+    func search(_ query: String) async throws -> [CatalogueShow] {
+        try await searchWorker.search(query, snapshot: snapshot, revision: searchRevision)
+    }
     @Published private(set) var loading = false
     @Published private(set) var status = ""
     @Published private(set) var error: String?
