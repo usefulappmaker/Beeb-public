@@ -857,14 +857,32 @@ struct LiveView: View {
     @Environment(\.scenePhase) private var phase
     @StateObject private var state = LiveState()
     @StateObject private var playback = PlaybackModel()
+    @EnvironmentObject private var history: WatchHistory
+    @AppStorage("liveMode") private var liveMode = "Channels"
+    @ViewBuilder private var header: some View {
+        // Leading edge, directly beneath the navigation button: Down reaches it from the top-left
+        // corner and Down again enters the page. It stays put when the mode changes.
+        BeebNavigationSegments(title: "Live view", options: ["Channels", "Guide"], selection: $liveMode).frame(width: 520)
+        if liveMode != "Guide" { Text("Live channels").font(.largeTitle).bold() }
+        if state.channels.isEmpty && state.error == nil { ProgressView("Getting channels…") }
+        if let error = state.error { Text(error).foregroundStyle(.orange); Button("Retry channels") { state.retry += 1 } }
+        if let error = playback.error { Text(error).foregroundStyle(.orange) }
+        if playback.loading { HStack { ProgressView("Connecting…"); Button("Cancel") { playback.stop() } } }
+    }
     var body: some View {
+        Group {
+            if liveMode == "Guide" {
+                // The guide scrolls itself, keeping its programme panel in view.
+                VStack(alignment: .leading, spacing: 24) {
+                    header
+                    ChannelGuideView(channels: state.channels,
+                                     playLive: { playback.startLive($0) { state.playing = true } },
+                                     playEpisode: { playback.start($0, history: history) { state.playing = true } })
+                }.padding(.horizontal, 60).padding(.top, 24)
+            } else {
         ScrollView {
             VStack(alignment: .leading, spacing: 30) {
-                Text("Live channels").font(.largeTitle).bold()
-                if state.channels.isEmpty && state.error == nil { ProgressView("Getting channels…") }
-                if let error = state.error { Text(error).foregroundStyle(.orange); Button("Retry channels") { state.retry += 1 } }
-                if let error = playback.error { Text(error).foregroundStyle(.orange) }
-                if playback.loading { HStack { ProgressView("Connecting to live channel…"); Button("Cancel") { playback.stop() } } }
+                header
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 370))], spacing: 30) {
                     ForEach(state.channels) { channel in
                         Button { playback.startLive(channel) { state.playing = true } } label: {
@@ -878,6 +896,8 @@ struct LiveView: View {
                     }
                 }
             }.padding(60)
+        }
+            }
         }.task(id: "\(state.retry)-\(phase)-\(state.playing)") {
             guard phase == .active, !state.playing else { return }
             #if DEBUG
