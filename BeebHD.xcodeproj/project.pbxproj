@@ -68,6 +68,11 @@ E11100000000000000000002 = {isa = PBXBuildFile; fileRef = E111000000000000000000
 		0000000000000000000000CA /* Playback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000003EA /* Playback.swift */; };
 /* End PBXBuildFile section */
 		F10000000000000000000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shared/LiveChannels.swift; sourceTree = "<group>";};
+		F20000000000000000000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shared/TopShelfShared.swift; sourceTree = "<group>";};
+		F20000000000000000000002 = {isa = PBXBuildFile; fileRef = F20000000000000000000001;};
+		F20000000000000000000003 = {isa = PBXBuildFile; fileRef = F20000000000000000000001;};
+		F20000000000000000000006 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopShelfLinks.swift; sourceTree = "<group>";};
+		F20000000000000000000007 = {isa = PBXBuildFile; fileRef = F20000000000000000000006;};
 		F10000000000000000000002 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentProvider.swift; sourceTree = "<group>";};
 		F10000000000000000000003 = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>";};
 		F10000000000000000000004 = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; path = BeebTopShelf.appex; sourceTree = BUILT_PRODUCTS_DIR;};
@@ -76,7 +81,7 @@ E11100000000000000000002 = {isa = PBXBuildFile; fileRef = E111000000000000000000
 		F10000000000000000000007 = {isa = PBXBuildFile; fileRef = F10000000000000000000001;};
 		F10000000000000000000008 = {isa = PBXBuildFile; fileRef = F10000000000000000000002;};
 		F10000000000000000000009 = {isa = PBXBuildFile; fileRef = F10000000000000000000004; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, );};};
-		F1000000000000000000000A = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (F10000000000000000000007, F10000000000000000000008); runOnlyForDeploymentPostprocessing = 0;};
+		F1000000000000000000000A = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (F10000000000000000000007, F20000000000000000000003, F10000000000000000000008); runOnlyForDeploymentPostprocessing = 0;};
 		F1000000000000000000000B = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0;};
 		F1000000000000000000000C = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0;};
 		F1000000000000000000000D = {isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; dstPath = ""; dstSubfolderSpec = 13; files = (F10000000000000000000009); name = "Embed App Extensions"; runOnlyForDeploymentPostprocessing = 0;};
@@ -85,9 +90,9 @@ E11100000000000000000002 = {isa = PBXBuildFile; fileRef = E111000000000000000000
 		F10000000000000000000010 = {isa = PBXNativeTarget; name = BeebTopShelf; productName = BeebTopShelf; productReference = F10000000000000000000004; productType = "com.apple.product-type.app-extension"; buildConfigurationList = F10000000000000000000011; buildPhases = (F1000000000000000000000A, F1000000000000000000000B, F1000000000000000000000C); dependencies = (); buildRules = ();};
 		F10000000000000000000011 = {isa = XCConfigurationList; buildConfigurations = (F10000000000000000000012, F10000000000000000000013); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release;};
 		F10000000000000000000012 = {isa = XCBuildConfiguration; name = Debug; buildSettings = {
-                BEEB_APP_BUNDLE_IDENTIFIER = org.beebplayer.Beeb;APPLICATION_EXTENSION_API_ONLY = YES; CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = ""; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_FILE = TopShelf/Info.plist; PRODUCT_BUNDLE_IDENTIFIER = "$(BEEB_APP_BUNDLE_IDENTIFIER).TopShelf"; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = appletvos; SKIP_INSTALL = YES; SUPPORTED_PLATFORMS = "appletvos appletvsimulator"; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = 3; TVOS_DEPLOYMENT_TARGET = 17.0; MARKETING_VERSION = 0.10.9; CURRENT_PROJECT_VERSION = 40; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"; SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG; SWIFT_OPTIMIZATION_LEVEL = "-Onone";};};
+                BEEB_APP_BUNDLE_IDENTIFIER = org.beebplayer.Beeb;APPLICATION_EXTENSION_API_ONLY = YES; CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = ""; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_FILE = TopShelf/Info.plist; CODE_SIGN_ENTITLEMENTS = TopShelf/TopShelf.entitlements; PRODUCT_BUNDLE_IDENTIFIER = "$(BEEB_APP_BUNDLE_IDENTIFIER).TopShelf"; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = appletvos; SKIP_INSTALL = YES; SUPPORTED_PLATFORMS = "appletvos appletvsimulator"; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = 3; TVOS_DEPLOYMENT_TARGET = 17.0; MARKETING_VERSION = 0.10.9; CURRENT_PROJECT_VERSION = 40; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"; SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG; SWIFT_OPTIMIZATION_LEVEL = "-Onone";};};
 		F10000000000000000000013 = {isa = XCBuildConfiguration; name = Release; buildSettings = {
-                BEEB_APP_BUNDLE_IDENTIFIER = org.beebplayer.Beeb;APPLICATION_EXTENSION_API_ONLY = YES; CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = ""; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_FILE = TopShelf/Info.plist; PRODUCT_BUNDLE_IDENTIFIER = "$(BEEB_APP_BUNDLE_IDENTIFIER).TopShelf"; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = appletvos; SKIP_INSTALL = YES; SUPPORTED_PLATFORMS = "appletvos appletvsimulator"; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = 3; TVOS_DEPLOYMENT_TARGET = 17.0; MARKETING_VERSION = 0.10.9; CURRENT_PROJECT_VERSION = 40; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";};};
+                BEEB_APP_BUNDLE_IDENTIFIER = org.beebplayer.Beeb;APPLICATION_EXTENSION_API_ONLY = YES; CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = ""; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_FILE = TopShelf/Info.plist; CODE_SIGN_ENTITLEMENTS = TopShelf/TopShelf.entitlements; PRODUCT_BUNDLE_IDENTIFIER = "$(BEEB_APP_BUNDLE_IDENTIFIER).TopShelf"; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = appletvos; SKIP_INSTALL = YES; SUPPORTED_PLATFORMS = "appletvos appletvsimulator"; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = 3; TVOS_DEPLOYMENT_TARGET = 17.0; MARKETING_VERSION = 0.10.9; CURRENT_PROJECT_VERSION = 40; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";};};
 
 /* Begin PBXFileReference section */
 		000000000000000000000006 /* BeebHD.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BeebHD.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -111,7 +116,7 @@ E11100000000000000000002 = {isa = PBXBuildFile; fileRef = E111000000000000000000
 			isa = PBXGroup;
 			children = (
 				000000000000000000000003 /* BeebHD */,
-                F10000000000000000000001, F10000000000000000000005,
+                F10000000000000000000001, F20000000000000000000001, F10000000000000000000005,
 				000000000000000000000004 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -119,6 +124,7 @@ E11100000000000000000002 = {isa = PBXBuildFile; fileRef = E111000000000000000000
 		000000000000000000000003 /* BeebHD */ = {
 			isa = PBXGroup;
 			children = (
+                F20000000000000000000006,
                 0000000000000000000001A2,
                 0000000000000000000001A3,
                 0000000000000000000001A4,
@@ -225,7 +231,7 @@ E11100000000000000000002 = {isa = PBXBuildFile; fileRef = E111000000000000000000
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-                F10000000000000000000006,
+                F10000000000000000000006, F20000000000000000000002, F20000000000000000000007,
                 0000000000000000000001F4,
                 0000000000000000000001F7,
                 0000000000000000000001F9,

@@ -43,20 +43,7 @@ struct ContinueWatchingRow: View {
         state.operation = Task { @MainActor in
             defer { state.preparing = false }
             do {
-                var show = record.show
-                if let saved = show {
-                    do { show = try await catalogue.open(saved) }
-                    catch { if Task.isCancelled { throw CancellationError() }; if record.target == nil { throw error } }
-                }
-                try Task.checkCancellation()
-                let episode: CatalogueEpisode?
-                if record.completed {
-                    if let show {
-                        let availableKnownNext = show.indexedAt == nil ? record.nextEpisode : record.nextEpisode.flatMap { next in show.episodes.first { $0.id == next.id } }
-                        episode = EpisodeSequence.next(after: record.episode, in: show) ?? availableKnownNext
-                    }
-                    else { episode = record.nextEpisode }
-                } else { episode = show?.episodes.first { $0.id == record.episode.id } ?? record.episode }
+                let (episode, show) = try await ContinueResolver.resolve(record, catalogue: catalogue)
                 guard let episode else {
                     state.error = "No next episode is currently available."
                     state.browse = show
@@ -65,6 +52,27 @@ struct ContinueWatchingRow: View {
                 playback.start(episode.programme, history: history, show: show) { state.playing = true }
             } catch { if !Task.isCancelled { state.error = error.localizedDescription } }
         }
+    }
+}
+/// Works out which episode a Continue Watching entry should play: the same
+/// episode to resume, or the next one when the last was finished.
+enum ContinueResolver {
+    @MainActor static func resolve(_ record: WatchRecord, catalogue: CatalogueStore) async throws -> (CatalogueEpisode?, CatalogueShow?) {
+        var show = record.show
+        if let saved = show {
+            do { show = try await catalogue.open(saved) }
+            catch { if Task.isCancelled { throw CancellationError() }; if record.target == nil { throw error } }
+        }
+        try Task.checkCancellation()
+        let episode: CatalogueEpisode?
+        if record.completed {
+            if let show {
+                let availableKnownNext = show.indexedAt == nil ? record.nextEpisode : record.nextEpisode.flatMap { next in show.episodes.first { $0.id == next.id } }
+                episode = EpisodeSequence.next(after: record.episode, in: show) ?? availableKnownNext
+            }
+            else { episode = record.nextEpisode }
+        } else { episode = show?.episodes.first { $0.id == record.episode.id } ?? record.episode }
+        return (episode, show)
     }
 }
 struct ContinueCard: View {
