@@ -70,6 +70,24 @@ The source ZIP is created under dist/. No upload is performed. See PUBLIC-RELEAS
 
 `BeebTopShelf` is embedded in BeebHD. Set `BEEB_APP_BUNDLE_IDENTIFIER` when overriding signing identifiers, rather than overriding `PRODUCT_BUNDLE_IDENTIFIER` for every target. The main app and extension must have distinct identifiers sharing the main app prefix. `build.sh` handles this through the existing `BEEB_BUNDLE_ID` option. The extension refreshes its public BBC channel/schedule snapshot at most every ten minutes when tvOS requests content. It stores no credentials or stream URLs and uses no App Group. `test-live-channels.sh` checks routing and artwork parsing. Select and Play/Pause use the same `beeb://live/<channel-id>` route.
 
+## macOS app
+
+`BeebMac.xcodeproj` builds a macOS 14 app from the same sources. Mac-only interface code lives in `Mac/`; the platform-neutral files in `BeebHD/` and `Shared/` are compiled unchanged, and tvOS-only views are excluded from the target or wrapped in `#if !os(macOS)`. The project is generated from `project-mac.yml`; after adding or removing source files, regenerate it with [XcodeGen](https://github.com/yonaskolb/XcodeGen):
+
+```sh
+xcodegen generate --spec project-mac.yml
+```
+
+The project selects no signing team and uses a template bundle identifier. Supply your own values, never a maintainer's identity:
+
+```sh
+xcodebuild -project BeebMac.xcodeproj -scheme BeebMac -configuration Release \
+  DEVELOPMENT_TEAM=YOUR_TEAM_ID BEEB_APP_BUNDLE_IDENTIFIER=com.youralias.BeebMac \
+  -allowProvisioningUpdates build
+```
+
+A development-signed build is required for normal use: Enable BBC UHD stores its identity in the data protection keychain, which macOS only opens to an app signed with its keychain access group. To check that the sources compile without an Apple account, add `CODE_SIGNING_ALLOWED=NO` in place of the signing settings; that build starts, but is not suitable for UHD setup.
+
 ## UHD setup in 0.10.9
 
 The UI uses native on-device configuration download, validation and identity packaging. No additional Python dependency is required by app users. The older scripts/setup-uhd.py protocol implementation and its tests remain for source/history compatibility; the app no longer offers manual helper URL entry. setup-uhd.command directs users to Settings → Enable BBC UHD.

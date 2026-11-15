@@ -123,7 +123,9 @@ import AVKit
         // Keep AVKit's built-in expanding text renderer out of this path: device
         // crash reports show it looping while measuring even short synopses.
         // The same metadata is rendered by our bounded Info card.
+        #if !os(macOS)
         if !item.externalMetadata.isEmpty { item.externalMetadata = [] }
+        #endif
     }
     private func prepareInfo(programme: Programme, versionID: String?, item: AVPlayerItem, generation id: UUID) {
         extrasTasks.append(Task { [weak self] in
@@ -193,8 +195,10 @@ import AVKit
                         self.updateTimedControls(at: time.seconds)
                     }
                 }
+                #if !os(macOS)
                 try AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
                 try AVAudioSession.sharedInstance().setActive(true)
+                #endif
                 if let context, context.resumePosition > 0 {
                     status = "Resuming episode…"
                     var waited = 0
@@ -329,6 +333,7 @@ import AVKit
     }
     #endif
 }
+#if !os(macOS) // tvOS player chrome; the Mac player lives in Mac/.
 /// Native controls and Info with a year-free title/episode line above the scrubber.
 struct NativePlayer: UIViewControllerRepresentable {
     @ObservedObject var model: PlaybackModel
@@ -852,3 +857,4 @@ struct ReviewPlaybackView: View {
     }
 }
 #endif
+#endif // !os(macOS)

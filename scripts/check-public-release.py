@@ -8,7 +8,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 EXCLUDED = {'.git', 'build', 'dist', '__pycache__', '.venv-setup', '.venv', '__MACOSX'}
 SUFFIXES = {'.swift', '.plist', '.entitlements', '.pbxproj', '.xcscheme',
-            '.xcworkspacedata', '.png', '.md', '.txt', '.py', '.sh', '.command', '.json'}
+            '.xcworkspacedata', '.png', '.md', '.txt', '.py', '.sh', '.command', '.json', '.yml'}
 ROOT_NAMES = {'.gitignore', '.gitattributes'}
 PATTERNS = {
     'local account path': re.compile(rb'/(?:Users|home)/[A-Za-z0-9_.-]+/'),

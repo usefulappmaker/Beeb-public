@@ -1,0 +1,45 @@
+# macOS build of Beeb. Generate with: xcodegen generate --spec project-mac.yml
+# Shares the platform-neutral sources in BeebHD/ and Shared/ with the tvOS app;
+# Mac-only UI lives in Mac/.
+name: BeebMac
+options:
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+targets:
+  BeebMac:
+    type: application
+    platform: macOS
+    sources:
+      - path: Mac
+      - path: Shared
+      - path: BeebHD
+        excludes:
+          - "BeebHDApp.swift"
+          - "CatalogueViews.swift"
+          - "ChannelGuideView.swift"
+          - "CatalogueSearchViews.swift"
+          - "ContinueWatching.swift"
+          - "NavigationEdges.swift"
+          - "UHDValidationView.swift"
+          - "Info.plist"
+          - "BeebHD.entitlements"
+    settings:
+      base:
+        PRODUCT_NAME: Beeb
+        # Template identifier, as in the tvOS project: supply your own with your signing team.
+        BEEB_APP_BUNDLE_IDENTIFIER: org.beebplayer.BeebMac
+        PRODUCT_BUNDLE_IDENTIFIER: $(BEEB_APP_BUNDLE_IDENTIFIER)
+        DEVELOPMENT_TEAM: ""
+        CODE_SIGN_STYLE: Automatic
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Beeb
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.entertainment
+        INFOPLIST_KEY_NSHumanReadableCopyright: "GPL-3.0-or-later. Not produced or endorsed by the BBC."
+        MARKETING_VERSION: "0.10.9"
+        CURRENT_PROJECT_VERSION: "40"
+        SWIFT_VERSION: "5.0"
+        ENABLE_HARDENED_RUNTIME: YES
+        # The UHD identity lives in the data protection keychain, which needs this entitlement.
+        CODE_SIGN_ENTITLEMENTS: BeebHD/BeebHD.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: MacAppIcon

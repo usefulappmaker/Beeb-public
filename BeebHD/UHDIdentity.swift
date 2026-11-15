@@ -12,10 +12,18 @@ enum UHDIdentityVault {
         let userAgent: String
         var bootstrap: UHDBootstrap? = nil
     }
+    /// macOS keeps protected, device-only items in its data protection keychain;
+    /// the default file-based keychain rejects the accessibility attribute used below.
+    private static func scoped(_ query: [String: Any]) -> [String: Any] {
+        #if os(macOS)
+        var query = query; query[kSecUseDataProtectionKeychain as String] = true
+        #endif
+        return query
+    }
     private static var setupQuery: [String: Any] {
-        [kSecClass as String: kSecClassGenericPassword,
+        scoped([kSecClass as String: kSecClassGenericPassword,
          kSecAttrService as String: "org.beebplayer.Beeb.uhd-setup",
-         kSecAttrAccount as String: "setup-v1"]
+         kSecAttrAccount as String: "setup-v1"])
     }
     private static func storedSetup() -> StoredSetup? {
         var query = setupQuery; query[kSecReturnData as String] = true; query[kSecMatchLimit as String] = kSecMatchLimitOne
@@ -53,7 +61,7 @@ enum UHDIdentityVault {
     }
     private static func label(_ fingerprint: String) -> String { "BeebHD.BBC.UHD." + fingerprint }
     private static func query(_ fingerprint: String) -> [String: Any] {
-        [kSecClass as String: kSecClassIdentity, kSecAttrLabel as String: label(fingerprint)]
+        scoped([kSecClass as String: kSecClassIdentity, kSecAttrLabel as String: label(fingerprint)])
     }
     static func identity() -> SecIdentity? {
         let setup = storedSetup()
@@ -72,7 +80,7 @@ enum UHDIdentityVault {
         }
         // Identity labels are not a reliable identity index across PKCS#12 imports/updates.
         // Match the actual certificate, without depending on its Keychain label.
-        let all: [String: Any] = [kSecClass as String: kSecClassIdentity, kSecReturnRef as String: true, kSecMatchLimit as String: kSecMatchLimitAll]
+        let all = scoped([kSecClass as String: kSecClassIdentity, kSecReturnRef as String: true, kSecMatchLimit as String: kSecMatchLimitAll])
         var matches: CFTypeRef?
         if SecItemCopyMatching(all as CFDictionary, &matches) == errSecSuccess, let identities = matches as? [SecIdentity],
            let identity = identities.first(where: { fingerprint(of: $0) == expected }) { return found(identity) }
