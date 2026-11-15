@@ -155,7 +155,8 @@ struct BookmarkFocusAnchor: UIViewRepresentable {
     func updateUIView(_ view: UIView, context: Context) { destination.view = view }
 }
 /// A full-width native guide immediately above the episode grid makes Up from
-/// any first-row episode reach Saved, including programmes with a series selector.
+/// any first-row episode reach Saved. It is disabled when series or paging
+/// controls sit above the grid, so Up reaches those controls first.
 struct WideBookmarkFocusGuide: UIViewRepresentable {
     let destination: BookmarkFocusDestination
     let enabled: Bool
