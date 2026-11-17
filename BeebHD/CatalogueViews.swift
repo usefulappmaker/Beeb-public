@@ -917,12 +917,16 @@ struct LiveView: View {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 370))], spacing: 30) {
                     ForEach(state.channels) { channel in
                         Button { playback.startLive(channel) { state.playing = true } } label: {
-                            VStack(alignment: .leading, spacing: 12) {
+                            VStack(alignment: .leading, spacing: 6) {   // LIVE-LOGOS
                                 ProgrammeThumbnail(url: channel.current?.image, uhd: false)
-                                Text(channel.current?.title ?? channel.title).font(.headline).lineLimit(2)
-                                    .frame(maxWidth: .infinity, minHeight: 60, maxHeight: 60, alignment: .topLeading)
-                                Text(channel.title).font(.callout).foregroundStyle(.secondary)
-                            }.padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                                    .overlay(alignment: .topLeading) { ChannelWordmark(id: channel.id, title: channel.title).padding(12) }
+                                    .overlay(alignment: .bottom) { LiveProgressLine(programme: channel.current) }
+                                    .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
+                                Text(channel.current?.title ?? channel.title).font(.system(size: 26, weight: .semibold)).lineLimit(1)
+                                    .padding(.top, 8)
+                                Text(channel.current.map { "Until " + $0.end.formatted(date: .omitted, time: .shortened) } ?? channel.title)
+                                    .font(.system(size: 21)).foregroundStyle(.secondary).lineLimit(1)
+                            }.padding(14).frame(maxWidth: .infinity, alignment: .leading)
                         }.buttonStyle(ProgrammeCardStyle()).disabled(playback.loading).rememberSidebarFocus()
                     }
                 }
@@ -1207,5 +1211,50 @@ struct ProfileEditView: View {
             Button("Remove", role: .destructive) { if let id = profileID { store.remove(id) }; done() }
             Button("Cancel", role: .cancel) {}
         } message: { Text("Their Continue Watching and Saved list will be deleted on every Apple TV.") }
+    }
+}
+
+// LIVE-LOGOS: typographic channel wordmark, in the style of the official app's channel strip.
+struct ChannelWordmark: View {
+    let id: String
+    let title: String
+    private var style: (label: String, colour: Color) {
+        switch true {
+        case id.hasPrefix("bbc_one"): return ("ONE", Color(red: 0.89, green: 0.28, blue: 0.27))
+        case id.hasPrefix("bbc_two"): return ("TWO", Color(red: 0.42, green: 0.23, blue: 0.62))
+        case id.hasPrefix("bbc_three"): return ("THREE", Color(red: 0.55, green: 0.75, blue: 0.13))
+        case id.hasPrefix("bbc_four"): return ("FOUR", Color(red: 0.12, green: 0.36, blue: 0.62))
+        case id == "cbbc": return ("CBBC", Color(red: 0.36, green: 0.73, blue: 0.24))
+        case id == "cbeebies": return ("CBeebies", Color(red: 0.98, green: 0.76, blue: 0.10))
+        case id.hasPrefix("bbc_news"): return ("NEWS", Color(red: 0.73, green: 0.10, blue: 0.10))
+        case id.hasPrefix("bbc_parliament"): return ("PARLIAMENT", Color(red: 0.15, green: 0.42, blue: 0.33))
+        case id.hasPrefix("bbc_scotland"): return ("SCOTLAND", Color(red: 0.10, green: 0.30, blue: 0.62))
+        case id.hasPrefix("bbc_alba"): return ("ALBA", Color(red: 0.05, green: 0.55, blue: 0.62))
+        case id.hasPrefix("s4c"): return ("S4C", Color(red: 0.95, green: 0.55, blue: 0.10))
+        default: return (title.replacingOccurrences(of: "BBC ", with: "").uppercased(), Color(white: 0.2))
+        }
+    }
+    var body: some View {
+        Text(style.label).font(.system(size: 24, weight: .heavy)).tracking(0.5)
+            .foregroundStyle(id == "cbeebies" ? Color.black : Color.white)
+            .padding(.horizontal, 12).padding(.vertical, 6)
+            .background(style.colour, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .shadow(color: .black.opacity(0.4), radius: 6, y: 2)
+            .accessibilityLabel(title)
+    }
+}
+/// Thin line along the bottom of a live tile: how far through the current programme we are.
+struct LiveProgressLine: View {
+    let programme: LiveProgramme?
+    var body: some View {
+        if let p = programme, let start = p.start, p.end > start {
+            let fraction = min(1, max(0, Date().timeIntervalSince(start) / p.end.timeIntervalSince(start)))
+            GeometryReader { g in
+                ZStack(alignment: .leading) {
+                    Rectangle().fill(.black.opacity(0.45))
+                    Rectangle().fill(Color.pink).frame(width: g.size.width * fraction)
+                }
+            }.frame(height: 6).clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 10, bottomTrailingRadius: 10))
+        }
     }
 }
