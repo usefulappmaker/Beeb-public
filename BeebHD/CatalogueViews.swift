@@ -22,7 +22,9 @@ struct HomeView: View {
     @AppStorage("homescreenLayout") private var homescreenLayout = "Modern"
     @AppStorage("modernNavigation") private var modernNavigation = "Sidebar"
     @AppStorage("display4KUHDCategory") private var display4KUHDCategory = true
-    private var visibleTabs: [BeebTab] { BeebTab.allCases.filter { display4KUHDCategory || $0 != .uhd } }
+    private var visibleTabs: [BeebTab] {
+        BeebTab.allCases.filter { (display4KUHDCategory || $0 != .uhd) && (!ProfileStore.shared.kidsMode || [.home, .live, .saved].contains($0)) }
+    }
     private var modern: Bool { homescreenLayout == "Modern" }
     private var usesSidebar: Bool { modern && modernNavigation == "Sidebar" }
     @State private var tab = BeebTab.home
@@ -78,7 +80,9 @@ struct HomeView: View {
         Group {
             if usesSidebar { sidebarHeader }
             else { horizontalHeader.focusSection().defaultFocus($focusedTab, tab) }
-        }.fullScreenCover(isPresented: $showProfilePicker) {
+        }.onChange(of: profiles.current) { _, _ in if !visibleTabs.contains(tab) { tab = .home } }
+        .onChange(of: profiles.kidsMode) { _, _ in if !visibleTabs.contains(tab) { tab = .home } }
+        .fullScreenCover(isPresented: $showProfilePicker) {
             WhoIsWatchingView(required: profiles.pickerRequired, dismiss: { showProfilePicker = false }) { id in
                 profiles.select(id)
                 profiles.pickerRequired = false
@@ -187,7 +191,7 @@ struct HomeView: View {
         NavigationStack {
             ZStack {
                 Color(red: 0.035, green: 0.015, blue: 0.055).ignoresSafeArea()
-                if tab == .home && modern {
+                if tab == .home && modern && !profiles.kidsMode {
                     DiscoveryHome(catalogue: catalogue, library: library, state: homeState,
                                   header: navigationIcon, menuOpen: sidebarOpen,
                                   focusHeader: focusNavigation)
@@ -196,7 +200,9 @@ struct HomeView: View {
                         navigationIcon
                         Group {
                             switch tab {
-                            case .home: ClassicDiscoveryHome(catalogue: catalogue, library: library, state: homeState)
+                            case .home:
+                                if profiles.kidsMode { KidsHomeView(catalogue: catalogue, library: library) }
+                                else { ClassicDiscoveryHome(catalogue: catalogue, library: library, state: homeState) }
                             case .uhd: UHDCategoryView(index: index, catalogue: catalogue, library: library)
                             case .browse: BrowseView(catalogue: catalogue, library: library, index: index)
                             case .search: CatalogueSearchView(index: index, catalogue: catalogue, library: library)
@@ -793,7 +799,8 @@ struct CatalogueShowView: View {
     var orderedSeries: [CatalogueSeries] { EpisodeSequence.orderedSeries(current.series) }
     var selectedEpisodes: [CatalogueEpisode] {
         let group = orderedSeries.first { $0.id == state.seriesID } ?? orderedSeries.last   // UI-POLISH3B: newest series by default
-        return EpisodeSequence.ordered(group?.episodes ?? [])
+        let episodes = EpisodeSequence.ordered(group?.episodes ?? [])
+        return ProfileStore.shared.kidsMode ? episodes.filter { ($0.programme.guidance ?? "").isEmpty } : episodes
     }
     var visibleEpisodes: [CatalogueEpisode] { Array(selectedEpisodes.dropFirst((state.episodePage - 1) * 30).prefix(30)) }
     @Environment(\.dismiss) private var dismiss
@@ -903,6 +910,8 @@ struct SavedProgrammes: View {
 }
 struct LiveView: View {
     var launch: LiveLaunch? = nil
+    @ObservedObject private var profileStore = ProfileStore.shared
+    private static let kidsChannels: Set<String> = ["cbbc", "cbeebies"]
     @Environment(\.scenePhase) private var phase
     @StateObject private var state = LiveState()
     @StateObject private var playback = PlaybackModel()
@@ -915,7 +924,7 @@ struct LiveView: View {
                 if let error = playback.error { Text(error).foregroundStyle(.orange) }
                 if playback.loading { HStack { ProgressView("Connecting to live channel…"); Button("Cancel") { playback.stop() } } }
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 370))], spacing: 30) {
-                    ForEach(state.channels) { channel in
+                    ForEach(state.channels.filter { !profileStore.kidsMode || Self.kidsChannels.contains($0.id) }) { channel in
                         Button { playback.startLive(channel) { state.playing = true } } label: {
                             VStack(alignment: .leading, spacing: 6) {   // LIVE-LOGOS
                                 ProgrammeThumbnail(url: channel.current?.image, uhd: false)
@@ -948,6 +957,7 @@ struct LiveView: View {
             } catch { if !Task.isCancelled { state.error = error.localizedDescription } }
         }.task(id: launch?.id) {
             guard let launch else { return }
+            if profileStore.kidsMode && !Self.kidsChannels.contains(launch.channelID) { state.error = "This channel isn't available on a kids profile."; return }
             // Allow an existing episode cover to dismiss before the Live page presents.
             do {
                 try await Task.sleep(nanoseconds: 400_000_000)
@@ -979,6 +989,7 @@ struct SettingsView: View {
     @State private var syncStatus = ""
     @State private var editingProfile: String?        // nil = add a new profile
     @State private var showProfileEditor = false
+    @State private var settingPIN = false
     private var startupChoices: [String] { ["last"] + profileStore.profiles.map(\.id) + ["ask"] }
     private func startupLabel(_ value: String) -> String {
         value == "last" ? "Last used" : value == "ask" ? "Ask" : profileStore.name(value)
@@ -1006,7 +1017,14 @@ struct SettingsView: View {
                             }.buttonStyle(ProgrammeCardStyle())
                         }.padding(.vertical, 16).padding(.horizontal, 8)
                     }.scrollClipDisabled()
-                    Text("Select a profile to rename it, switch to it or remove it.").font(.system(size: 22)).foregroundStyle(.secondary)
+                    Text("Select a profile to rename it, switch to it, make it a kids profile or remove it.").font(.system(size: 22)).foregroundStyle(.secondary)
+                    HStack(spacing: 24) {
+                        Button(profileStore.kidsPIN.isEmpty ? "Set kids PIN" : "Change kids PIN") { settingPIN = true }
+                        if !profileStore.kidsPIN.isEmpty { Button("Remove kids PIN") { profileStore.kidsPIN = "" } }
+                        Text(profileStore.kidsPIN.isEmpty ? "No PIN: anyone can switch away from a kids profile."
+                                                          : "The PIN is needed to leave a kids profile.")
+                            .font(.system(size: 22)).foregroundStyle(.secondary)
+                    }
                     Text("On launch").font(.system(size: 24, weight: .semibold)).foregroundStyle(.secondary).padding(.top, 8)
                     ScrollView(.horizontal) {
                         BeebNavigationSegments(title: "Profile on launch", options: startupChoices.map(startupLabel), selection: Binding(
@@ -1018,6 +1036,12 @@ struct SettingsView: View {
                 }.padding(32).frame(maxWidth: .infinity, alignment: .leading)
                     .background(.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 24))
                     .focusSection()   // Down from the menu bar lands in this section even though its first control is at the far left
+                    .fullScreenCover(isPresented: $settingPIN) {
+                        PINPadView(title: "Choose a 4-digit kids PIN", validate: nil) { pin in
+                            if let pin { profileStore.kidsPIN = pin }
+                            settingPIN = false
+                        }
+                    }
                     .fullScreenCover(isPresented: $showProfileEditor) {
                         ProfileEditView(profileID: editingProfile) { showProfileEditor = false }
                     }
@@ -1135,12 +1159,13 @@ struct WhoIsWatchingView: View {
     let dismiss: () -> Void
     let choose: (String) -> Void
     @FocusState private var focused: String?
+    @State private var pending: String?
     var body: some View {
         VStack(spacing: 60) {
             Text("Who's watching?").font(.system(size: 56, weight: .bold))
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 260, maximum: 300), spacing: 40)], spacing: 40) {
                 ForEach(store.profiles) { profile in
-                    Button { choose(profile.id) } label: {
+                    Button { if store.needsPIN(toSelect: profile.id) { pending = profile.id } else { choose(profile.id) } } label: {
                         ProfileAvatar(name: profile.name, current: profile.id == store.current)
                     }.buttonStyle(ProgrammeCardStyle()).focused($focused, equals: profile.id)
                 }
@@ -1152,6 +1177,13 @@ struct WhoIsWatchingView: View {
         .defaultFocus($focused, store.current)
         .onExitCommand { if !required { dismiss() } }
         .interactiveDismissDisabled(required)
+        .fullScreenCover(item: Binding(get: { pending.map { PendingProfile(id: $0) } }, set: { pending = $0?.id })) { item in
+            PINPadView(title: "Enter the kids PIN to switch to \(store.name(item.id))", validate: { $0 == store.kidsPIN }) { pin in
+                let id = item.id
+                pending = nil
+                if pin != nil { choose(id) }
+            }
+        }
     }
 }
 
@@ -1176,6 +1208,7 @@ struct ProfileEditView: View {
     let done: () -> Void
     @State private var name = ""
     @State private var confirmRemove = false
+    @State private var kids = false
     @FocusState private var nameFocused: Bool
     private var trimmed: String { name.trimmingCharacters(in: .whitespacesAndNewlines) }
     var body: some View {
@@ -1187,11 +1220,15 @@ struct ProfileEditView: View {
                     Text("Name").font(.system(size: 24, weight: .semibold)).foregroundStyle(.secondary)
                     TextField("Name", text: $name).font(.system(size: 32)).frame(width: 760).focused($nameFocused)
                         .textInputAutocapitalization(.words).autocorrectionDisabled()
+                    Toggle("Kids profile", isOn: $kids).frame(width: 760).padding(.top, 12)
+                    Text("CBeebies and CBBC only, no programmes with BBC guidance warnings, and no Settings.")
+                        .font(.system(size: 20)).foregroundStyle(.secondary).frame(width: 760, alignment: .leading)
                 }
             }
             HStack(spacing: 24) {
                 Button(profileID == nil ? "Add profile" : "Save") {
-                    if let id = profileID { store.rename(id, to: trimmed) } else { store.add(trimmed) }
+                    if let id = profileID { store.rename(id, to: trimmed); store.setKids(id, kids) }
+                    else if let added = store.add(trimmed) { store.setKids(added.id, kids) }
                     done()
                 }.buttonStyle(PrimaryPlayButtonStyle()).disabled(trimmed.isEmpty)
                 if let id = profileID, id != store.current {
@@ -1206,7 +1243,7 @@ struct ProfileEditView: View {
         .background(Color.black.opacity(0.55).ignoresSafeArea())
         .background(.ultraThickMaterial)
         .onAppear {
-            if let id = profileID { name = store.name(id) } else { nameFocused = true }
+            if let id = profileID { name = store.name(id); kids = store.profiles.first { $0.id == id }?.kids ?? false } else { nameFocused = true }
         }
         .onExitCommand { done() }
         .alert("Remove \(store.name(profileID ?? ""))?", isPresented: $confirmRemove) {
@@ -1257,6 +1294,91 @@ struct LiveProgressLine: View {
                     Rectangle().fill(Color.pink).frame(width: g.size.width * fraction)
                 }
             }.frame(height: 6).clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 10, bottomTrailingRadius: 10))
+        }
+    }
+}
+
+private struct PendingProfile: Identifiable { let id: String }
+
+/// Remote-friendly 4-digit PIN pad. validate == nil: choose a new PIN; otherwise check it. Back cancels.
+struct PINPadView: View {
+    let title: String
+    let validate: ((String) -> Bool)?
+    let done: (String?) -> Void
+    @State private var digits = ""
+    @State private var message = ""
+    private let keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "Delete", "0", "Cancel"]
+    var body: some View {
+        VStack(spacing: 36) {
+            Text(title).font(.system(size: 40, weight: .bold)).multilineTextAlignment(.center)
+            HStack(spacing: 24) {
+                ForEach(0..<4, id: \.self) { i in
+                    Circle().fill(i < digits.count ? Color.white : Color.white.opacity(0.2)).frame(width: 30, height: 30)
+                }
+            }
+            Text(message.isEmpty ? " " : message).font(.system(size: 24)).foregroundStyle(.orange)
+            LazyVGrid(columns: Array(repeating: GridItem(.fixed(180), spacing: 24), count: 3), spacing: 24) {
+                ForEach(keys, id: \.self) { key in
+                    Button(key) { press(key) }.buttonStyle(OutlinedActionButtonStyle()).frame(width: 180)
+                }
+            }
+        }.frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.black.opacity(0.55).ignoresSafeArea())
+        .background(.ultraThickMaterial)
+        .onExitCommand { done(nil) }
+    }
+    private func press(_ key: String) {
+        switch key {
+        case "Cancel": done(nil)
+        case "Delete": if !digits.isEmpty { digits.removeLast() }
+        default:
+            guard digits.count < 4 else { return }
+            digits += key; message = ""
+            if digits.count == 4 {
+                if let validate, !validate(digits) { message = "That PIN isn't right."; digits = "" }
+                else { done(digits) }
+            }
+        }
+    }
+}
+
+/// Home for a kids profile: their Continue Watching plus CBeebies and CBBC programmes.
+struct KidsHomeView: View {
+    @ObservedObject var catalogue: CatalogueStore
+    @ObservedObject var library: Library
+    private struct Row: Identifiable { let id: String; let title: String; let shows: [CatalogueShow] }
+    @State private var rows: [Row] = []
+    @State private var error: String?
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 36) {
+                ContinueWatchingRow(catalogue: catalogue, library: library)
+                if rows.isEmpty && error == nil { ProgressView("Getting CBeebies and CBBC…") }
+                if let error { Text(error).foregroundStyle(.orange) }
+                ForEach(rows) { row in
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text(row.title).font(.system(size: 36, weight: .bold))
+                        ScrollView(.horizontal) {
+                            LazyHStack(spacing: 36) {
+                                ForEach(row.shows) { show in
+                                    NavigationLink { CatalogueShowView(show: show, catalogue: catalogue, library: library) } label: {
+                                        ShowCard(show: show).frame(width: 400)
+                                    }.buttonStyle(ProgrammeCardStyle())
+                                }
+                            }.padding(.vertical, 24).padding(.horizontal, 8)
+                        }.scrollClipDisabled()
+                    }.focusSection()
+                }
+            }.padding(60)
+        }.task {
+            var loaded: [Row] = []
+            for (id, title) in [("cbeebies", "CBeebies"), ("cbbc", "CBBC")] {
+                if let page = try? await DiscoveryAPI().page(category: id, page: 1), !page.shows.isEmpty {
+                    loaded.append(Row(id: id, title: title, shows: page.shows))
+                }
+            }
+            rows = loaded
+            if loaded.isEmpty { error = "CBeebies and CBBC programmes couldn't be loaded. Try again later." }
         }
     }
 }
