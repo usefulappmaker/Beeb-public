@@ -973,10 +973,8 @@ struct SettingsView: View {
     @AppStorage(BeebSyncSettings.urlKey) private var syncURL = ""
     @AppStorage(BeebSyncSettings.secretKey) private var syncSecret = ""
     @State private var syncStatus = ""
-    @State private var profileName = ""
-    @State private var addingProfile = false
-    @State private var renamingProfile: String?
-    @State private var removingProfile: String?
+    @State private var editingProfile: String?        // nil = add a new profile
+    @State private var showProfileEditor = false
     private var startupChoices: [String] { ["last"] + profileStore.profiles.map(\.id) + ["ask"] }
     private func startupLabel(_ value: String) -> String {
         value == "last" ? "Last used" : value == "ask" ? "Ask" : profileStore.name(value)
@@ -988,21 +986,23 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Profiles").font(.system(size: 32, weight: .bold))
                     Text("Each person has their own Continue Watching and Saved list.").font(.system(size: 22)).foregroundStyle(.secondary)
-                    ForEach(profileStore.profiles) { profile in
-                        HStack(spacing: 16) {
-                            Button { profileStore.select(profile.id) } label: {
-                                HStack(spacing: 14) {
-                                    Image(systemName: profile.id == profileStore.current ? "checkmark.circle.fill" : "person.crop.circle")
-                                        .foregroundStyle(profile.id == profileStore.current ? Color.pink : Color.secondary)
-                                    Text(profile.name)
-                                    Spacer()
-                                }.frame(width: 560, alignment: .leading)
+                    ScrollView(.horizontal) {
+                        HStack(spacing: 28) {
+                            ForEach(profileStore.profiles) { profile in
+                                Button { editingProfile = profile.id; showProfileEditor = true } label: {
+                                    ProfileAvatar(name: profile.name, current: profile.id == profileStore.current, size: 130)
+                                }.buttonStyle(ProgrammeCardStyle())
                             }
-                            Button("Rename") { profileName = profile.name; renamingProfile = profile.id }
-                            if profileStore.profiles.count > 1 { Button("Remove") { removingProfile = profile.id } }
-                        }
-                    }
-                    Button { profileName = ""; addingProfile = true } label: { Label("Add profile", systemImage: "plus") }
+                            Button { editingProfile = nil; showProfileEditor = true } label: {
+                                VStack(spacing: 12) {
+                                    Image(systemName: "plus").font(.system(size: 50, weight: .semibold))
+                                        .frame(width: 130, height: 130).background(Circle().fill(.white.opacity(0.12)))
+                                    Text("Add").font(.system(size: 24, weight: .semibold))
+                                }.padding(16)
+                            }.buttonStyle(ProgrammeCardStyle())
+                        }.padding(.vertical, 16).padding(.horizontal, 8)
+                    }.scrollClipDisabled()
+                    Text("Select a profile to rename it, switch to it or remove it.").font(.system(size: 22)).foregroundStyle(.secondary)
                     Text("On launch").font(.system(size: 24, weight: .semibold)).foregroundStyle(.secondary).padding(.top, 8)
                     ScrollView(.horizontal) {
                         BeebNavigationSegments(title: "Profile on launch", options: startupChoices.map(startupLabel), selection: Binding(
@@ -1013,20 +1013,9 @@ struct SettingsView: View {
                     }.scrollClipDisabled()
                 }.padding(32).frame(maxWidth: .infinity, alignment: .leading)
                     .background(.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 24))
-                    .alert("Add profile", isPresented: $addingProfile) {
-                        TextField("Name", text: $profileName)
-                        Button("Add") { profileStore.add(profileName) }
-                        Button("Cancel", role: .cancel) {}
+                    .fullScreenCover(isPresented: $showProfileEditor) {
+                        ProfileEditView(profileID: editingProfile) { showProfileEditor = false }
                     }
-                    .alert("Rename profile", isPresented: Binding(get: { renamingProfile != nil }, set: { if !$0 { renamingProfile = nil } })) {
-                        TextField("Name", text: $profileName)
-                        Button("Save") { if let id = renamingProfile { profileStore.rename(id, to: profileName) } }
-                        Button("Cancel", role: .cancel) {}
-                    }
-                    .alert("Remove \(profileStore.name(removingProfile ?? ""))?", isPresented: Binding(get: { removingProfile != nil }, set: { if !$0 { removingProfile = nil } })) {
-                        Button("Remove", role: .destructive) { if let id = removingProfile { profileStore.remove(id) } }
-                        Button("Cancel", role: .cancel) {}
-                    } message: { Text("Their Continue Watching and Saved list will be deleted on every Apple TV.") }
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Household sync").font(.system(size: 32, weight: .bold))
                     Text("Optional. Shares profiles, Continue Watching and Saved between your Apple TVs through a sync server you run, for example the Home Assistant AppDaemon app. Leave the URL empty to keep everything on this Apple TV.")
@@ -1146,12 +1135,7 @@ struct WhoIsWatchingView: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 260, maximum: 300), spacing: 40)], spacing: 40) {
                 ForEach(store.profiles) { profile in
                     Button { choose(profile.id) } label: {
-                        VStack(spacing: 18) {
-                            Text(String(profile.name.prefix(1)).uppercased()).font(.system(size: 80, weight: .bold))
-                                .frame(width: 200, height: 200).background(Circle().fill(Color.pink.opacity(0.85)))
-                                .overlay { if profile.id == store.current { Circle().strokeBorder(.white, lineWidth: 6) } }
-                            Text(profile.name).font(.system(size: 32, weight: .semibold)).lineLimit(1)
-                        }.padding(24)
+                        ProfileAvatar(name: profile.name, current: profile.id == store.current)
                     }.buttonStyle(ProgrammeCardStyle()).focused($focused, equals: profile.id)
                 }
             }.frame(maxWidth: 1400)
@@ -1162,5 +1146,66 @@ struct WhoIsWatchingView: View {
         .defaultFocus($focused, store.current)
         .onExitCommand { if !required { dismiss() } }
         .interactiveDismissDisabled(required)
+    }
+}
+
+/// Round initial avatar used in the picker and Settings.
+struct ProfileAvatar: View {
+    let name: String
+    let current: Bool
+    var size: CGFloat = 200
+    var body: some View {
+        VStack(spacing: size * 0.09) {
+            Text(String(name.prefix(1)).uppercased()).font(.system(size: size * 0.4, weight: .bold))
+                .frame(width: size, height: size).background(Circle().fill(Color.pink.opacity(0.85)))
+                .overlay { if current { Circle().strokeBorder(.white, lineWidth: max(4, size * 0.03)) } }
+            Text(name.isEmpty ? " " : name).font(.system(size: max(22, size * 0.16), weight: .semibold)).lineLimit(1)
+        }.padding(size * 0.12)
+    }
+}
+/// Add or edit a profile: a real text field (opens the Apple TV keyboard), Save / Switch to / Remove / Cancel.
+struct ProfileEditView: View {
+    @ObservedObject private var store = ProfileStore.shared
+    let profileID: String?
+    let done: () -> Void
+    @State private var name = ""
+    @State private var confirmRemove = false
+    @FocusState private var nameFocused: Bool
+    private var trimmed: String { name.trimmingCharacters(in: .whitespacesAndNewlines) }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 44) {
+            Text(profileID == nil ? "Add profile" : "Edit profile").font(.system(size: 56, weight: .bold))
+            HStack(spacing: 48) {
+                ProfileAvatar(name: trimmed.isEmpty ? "?" : trimmed, current: profileID == store.current, size: 180)
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Name").font(.system(size: 24, weight: .semibold)).foregroundStyle(.secondary)
+                    TextField("Name", text: $name).font(.system(size: 32)).frame(width: 760).focused($nameFocused)
+                        .textInputAutocapitalization(.words).autocorrectionDisabled()
+                }
+            }
+            HStack(spacing: 24) {
+                Button(profileID == nil ? "Add profile" : "Save") {
+                    if let id = profileID { store.rename(id, to: trimmed) } else { store.add(trimmed) }
+                    done()
+                }.buttonStyle(PrimaryPlayButtonStyle()).disabled(trimmed.isEmpty)
+                if let id = profileID, id != store.current {
+                    Button("Switch to") { store.rename(id, to: trimmed); store.select(id); done() }
+                }
+                if let id = profileID, store.profiles.count > 1, store.profiles.contains(where: { $0.id == id }) {
+                    Button("Remove") { confirmRemove = true }
+                }
+                Button("Cancel") { done() }
+            }.buttonStyle(OutlinedActionButtonStyle())
+        }.padding(90).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(Color.black.opacity(0.55).ignoresSafeArea())
+        .background(.ultraThickMaterial)
+        .onAppear {
+            if let id = profileID { name = store.name(id) } else { nameFocused = true }
+        }
+        .onExitCommand { done() }
+        .alert("Remove \(store.name(profileID ?? ""))?", isPresented: $confirmRemove) {
+            Button("Remove", role: .destructive) { if let id = profileID { store.remove(id) }; done() }
+            Button("Cancel", role: .cancel) {}
+        } message: { Text("Their Continue Watching and Saved list will be deleted on every Apple TV.") }
     }
 }
