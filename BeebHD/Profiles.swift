@@ -90,6 +90,7 @@ enum BeebSyncClient {
 
     private init() {
         let d = UserDefaults.standard
+        Self.migrateLegacy(d)   // before anything reads profile ids or sync settings
         startup = d.string(forKey: Self.startupKey) ?? "last"
         kidsPIN = d.string(forKey: "beebKidsPIN") ?? ""
         pinUpdatedAt = d.object(forKey: "beebKidsPINUpdated") as? Date ?? Date(timeIntervalSinceReferenceDate: 0)
