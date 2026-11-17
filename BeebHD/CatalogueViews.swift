@@ -930,7 +930,7 @@ struct LiveView: View {
                 if playback.loading { HStack { ProgressView("Connecting to live channel…"); Button("Cancel") { playback.stop() } } }
                 // CHANNEL-GUIDE: channel strip
                 ScrollView(.horizontal) {
-                    HStack(spacing: 14) {
+                    HStack(spacing: 6) {
                         ForEach(state.channels.filter { !profileStore.kidsMode || Self.kidsChannels.contains($0.id) }) { channel in
                             Button { playback.startLive(channel) { state.playing = true } } label: {
                                 Text(ChannelWordmark.style(id: channel.id, title: channel.title).label)
@@ -1469,13 +1469,13 @@ private struct ChannelStripSurface<Content: View>: View {
     let pressed: Bool
     @Environment(\.isFocused) private var focused
     var body: some View {
-        content.font(.system(size: 40, weight: .heavy)).lineLimit(1).fixedSize()
+        content.font(.system(size: 30, weight: .heavy)).lineLimit(1).fixedSize()
             .foregroundStyle(Color.white.opacity(focused || selected ? 1 : 0.7))
-            .padding(.horizontal, 30).frame(minWidth: 170, minHeight: 104)
-            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(focused ? colour : Color.white.opacity(0.04)))
-            .overlay(alignment: .bottom) { if selected && !focused { Capsule().fill(colour).frame(height: 5).padding(.horizontal, 22).offset(y: -8) } }
-            .scaleEffect(pressed ? 0.96 : focused ? 1.08 : 1)
-            .shadow(color: .black.opacity(focused ? 0.45 : 0), radius: 14, y: 6)
+            .padding(.horizontal, 22).frame(minWidth: 110, minHeight: 70)
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(focused ? colour : Color.clear))
+            .overlay(alignment: .bottom) { if selected && !focused { Capsule().fill(colour).frame(height: 5).padding(.horizontal, 18).offset(y: -4) } }
+            .scaleEffect(pressed ? 0.96 : focused ? 1.06 : 1)
+            .shadow(color: .black.opacity(focused ? 0.45 : 0), radius: 10, y: 4)
             .animation(.easeOut(duration: 0.15), value: focused)
             .focusEffectDisabled()
     }
