@@ -979,7 +979,7 @@ struct SettingsView: View {
     @State private var removingProfile: String?
     private var startupChoices: [String] { ["last"] + profileStore.profiles.map(\.id) + ["ask"] }
     private func startupLabel(_ value: String) -> String {
-        value == "last" ? "Last used" : value == "ask" ? "Ask who's watching" : "Always \(profileStore.name(value))"
+        value == "last" ? "Last used" : value == "ask" ? "Ask" : profileStore.name(value)
     }
     var body: some View {
         ScrollView {
@@ -1003,11 +1003,14 @@ struct SettingsView: View {
                         }
                     }
                     Button { profileName = ""; addingProfile = true } label: { Label("Add profile", systemImage: "plus") }
-                    Button {
-                        let choices = startupChoices
-                        let i = choices.firstIndex(of: profileStore.startup) ?? 0
-                        profileStore.startup = choices[(i + 1) % choices.count]
-                    } label: { Text("On launch: \(startupLabel(profileStore.startup))") }
+                    Text("On launch").font(.system(size: 24, weight: .semibold)).foregroundStyle(.secondary).padding(.top, 8)
+                    ScrollView(.horizontal) {
+                        BeebNavigationSegments(title: "Profile on launch", options: startupChoices.map(startupLabel), selection: Binding(
+                            get: { startupLabel(profileStore.startup) },
+                            set: { label in if let value = startupChoices.first(where: { startupLabel($0) == label }) { profileStore.startup = value } }))
+                            .frame(width: CGFloat(startupChoices.count) * 220)
+                            .padding(.vertical, 12).padding(.horizontal, 4)
+                    }.scrollClipDisabled()
                 }.padding(32).frame(maxWidth: .infinity, alignment: .leading)
                     .background(.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 24))
                     .alert("Add profile", isPresented: $addingProfile) {
