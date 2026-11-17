@@ -1017,6 +1017,7 @@ struct SettingsView: View {
                     }.scrollClipDisabled()
                 }.padding(32).frame(maxWidth: .infinity, alignment: .leading)
                     .background(.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 24))
+                    .focusSection()   // Down from the menu bar lands in this section even though its first control is at the far left
                     .fullScreenCover(isPresented: $showProfileEditor) {
                         ProfileEditView(profileID: editingProfile) { showProfileEditor = false }
                     }
@@ -1032,6 +1033,7 @@ struct SettingsView: View {
                     }
                 }.padding(32).frame(maxWidth: .infinity, alignment: .leading)
                     .background(.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 24))
+                    .focusSection()
                     .onChange(of: syncURL) { _, _ in profileStore.scheduleSync(); NotificationCenter.default.post(name: ProfileStore.changed, object: nil) }
                     .onChange(of: syncSecret) { _, _ in profileStore.scheduleSync(); NotificationCenter.default.post(name: ProfileStore.changed, object: nil) }
                 VStack(alignment: .leading, spacing: 24) {

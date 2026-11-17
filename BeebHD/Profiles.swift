@@ -12,7 +12,7 @@ import Combine
 struct BeebProfile: Codable, Identifiable, Hashable {
     var id: String
     var name: String
-    /// Reserved for a future kids mode; stored and synced, not yet enforced.
+    /// Kids mode: CBeebies/CBBC only, no programmes with BBC guidance warnings, Settings hidden.
     var kids: Bool = false
     var updatedAt: Date
 }
@@ -70,6 +70,8 @@ enum BeebSyncClient {
     @Published private(set) var current: String = defaultID
     @Published var startup: String { didSet { UserDefaults.standard.set(startup, forKey: Self.startupKey) } }
     @Published var pickerRequired = false
+    /// Optional 4-digit PIN needed to switch from a kids profile to another profile (stored on this Apple TV).
+    @Published var kidsPIN: String { didSet { UserDefaults.standard.set(kidsPIN, forKey: "beebKidsPIN") } }
     private var removed: [String: Date] = [:]
     private var syncTask: Task<Void, Never>?
 
@@ -79,6 +81,7 @@ enum BeebSyncClient {
     private init() {
         let d = UserDefaults.standard
         startup = d.string(forKey: Self.startupKey) ?? "last"
+        kidsPIN = d.string(forKey: "beebKidsPIN") ?? ""
         if let data = d.data(forKey: Self.listKey), let list = try? JSONDecoder().decode([BeebProfile].self, from: data) { profiles = list }
         if let data = d.data(forKey: Self.removedKey), let map = try? JSONDecoder().decode([String: Date].self, from: data) { removed = map }
         if profiles.isEmpty { profiles = [BeebProfile(id: Self.defaultID, name: "Me", updatedAt: Date(timeIntervalSinceReferenceDate: 0))]; saveList() }
@@ -93,6 +96,18 @@ enum BeebSyncClient {
     }
 
     var currentProfile: BeebProfile { profiles.first { $0.id == current } ?? profiles[0] }
+    var kidsMode: Bool { currentProfile.kids }
+    /// True when switching to `id` must be confirmed with the kids PIN.
+    func needsPIN(toSelect id: String) -> Bool {
+        guard !kidsPIN.isEmpty, let target = profiles.first(where: { $0.id == id }), !target.kids else { return false }
+        return kidsMode || pickerRequired
+    }
+    func setKids(_ id: String, _ kids: Bool) {
+        guard let i = profiles.firstIndex(where: { $0.id == id }), profiles[i].kids != kids else { return }
+        profiles[i].kids = kids; profiles[i].updatedAt = Date()
+        saveList(); scheduleSync()
+        if id == current { NotificationCenter.default.post(name: Self.changed, object: nil) }
+    }
     func name(_ id: String) -> String { profiles.first { $0.id == id }?.name ?? id }
 
     // MARK: switching and editing
