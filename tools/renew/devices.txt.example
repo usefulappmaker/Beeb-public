@@ -1,0 +1,4 @@
+# Copy to devices.txt. One Apple TV per line: devicectl identifier, then a name.
+# Find identifiers with:  xcrun devicectl list devices
+00008110-0000000000000000 Living room
+00008110-1111111111111111 Bedroom

@@ -1,0 +1,6 @@
+# Add this to AppDaemon's apps.yaml (same folder as beeb_sync.py). Use your own long random key,
+# e.g. from:  python3 -c "import secrets; print(secrets.token_urlsafe(24))"
+beeb_sync:
+  module: beeb_sync
+  class: BeebSync
+  key: "change-me-to-a-long-random-key"
