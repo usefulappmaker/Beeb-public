@@ -25,9 +25,9 @@ This is a community fork of [usefulappmaker/Beeb-public](https://github.com/usef
 - **Household sync (optional, self-hosted):** share profiles, Continue Watching, Saved and the kids PIN between
   your Apple TVs through a server you run — a Home Assistant (AppDaemon) app or a standalone Python/Docker server.
   Off until you enter a server in **Settings › Household sync**. See [docs/SYNC.md](docs/SYNC.md).
-- **Live TV channel guide** in the style of the official Channels page: a strip of channel wordmarks, an ON NOW
+- **Channels page** (formerly Live) in the style of the official Channels page: a strip of channel wordmarks, an ON NOW
   card with progress, the channel's featured programmes and themed rows.
-- **Watch live TV from the start:** *Watch from start* and *Back to live* buttons in the player (BBC keeps about
+- **Watch live TV from the start:** *Watch from start* and *Live* buttons in the player (live TV now shows the real time of day) (BBC keeps about
   two hours), and an optional prompt — **Settings › Offer watch from start for live TV** — that asks "from the
   start or live?" when you open a channel part-way through a programme.
 - **Interface polish:** a clear Play/Resume button, cards that lift on focus, medium-length synopses with an

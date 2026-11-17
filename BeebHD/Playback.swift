@@ -452,12 +452,21 @@ final class PlayerContainerViewController: UIViewController, UIGestureRecognizer
     var chooseAdditional: ((AdditionalLiveStream) -> Void)?
     var fromStart: (() -> Void)?
     var backToLive: (() -> Void)?
-    lazy var fromStartAction = UIAction(title: "Watch from start", image: UIImage(systemName: "backward.end.fill")) { [weak self] _ in self?.fromStart?() }
-    lazy var liveAction = UIAction(title: "Back to live", image: UIImage(systemName: "forward.end.fill")) { [weak self] _ in self?.backToLive?() }
+    lazy var fromStartAction = UIAction(title: "Watch from start", image: UIImage(systemName: "arrow.counterclockwise.circle")) { [weak self] _ in self?.fromStart?() }
+    lazy var liveAction = UIAction(title: "Live", image: Self.textIcon("LIVE")) { [weak self] _ in self?.backToLive?() }
     private var liveMenus = false
     private var lastAdditionalError: UUID?
     lazy var redAction = UIAction(title:"Additional streams", image:Self.redIcon()) { [weak self] _ in self?.showAdditionalStreams() }
     lazy var infoAction = UIAction(title: "Info", image: UIImage(systemName: "info.circle")) { [weak self] _ in self?.showInfo() }
+    static func textIcon(_ label: String) -> UIImage {
+        let attributes: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: 18, weight: .semibold), .foregroundColor: UIColor.white]
+        let text = label as NSString
+        let measured = text.size(withAttributes: attributes)
+        let size = CGSize(width: max(40, measured.width + 8), height: 34)
+        return UIGraphicsImageRenderer(size: size).image { _ in
+            text.draw(at: CGPoint(x: (size.width - measured.width) / 2, y: (size.height - measured.height) / 2), withAttributes: attributes)
+        }.withRenderingMode(.alwaysTemplate)
+    }
     static func redIcon() -> UIImage {
         let size = CGSize(width:40,height:34)
         return UIGraphicsImageRenderer(size:size).image { _ in

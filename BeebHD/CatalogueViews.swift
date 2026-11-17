@@ -2,7 +2,7 @@
 import SwiftUI
 import TVServices
 
-private enum BeebTab: String, CaseIterable { case home = "Home", search = "Search", browse = "Browse", live = "Live", uhd = "4K UHD", saved = "Saved", settings = "Settings"
+private enum BeebTab: String, CaseIterable { case home = "Home", search = "Search", browse = "Browse", live = "Channels", uhd = "4K UHD", saved = "Saved", settings = "Settings"
     var icon: String {
         switch self {
         case .home: "house.fill"
@@ -1015,7 +1015,8 @@ struct LiveView: View {
             // Allow an existing episode cover to dismiss before the Live page presents.
             do {
                 try await Task.sleep(nanoseconds: 400_000_000)
-                var channel = state.channels.first { $0.id == launch.channelID }
+                let wanted = RegionalChannels.resolve(LiveChannel(id: launch.channelID, title: "")).id
+                var channel = state.channels.first { $0.id == wanted || $0.id == launch.channelID }
                 if channel == nil, let known = LiveShelfChannel.defaults.first(where: { $0.id == launch.channelID }) {
                     channel = LiveChannel(id: known.id, title: known.title)
                 }
