@@ -1059,7 +1059,7 @@ struct SettingsView: View {
                         Button(profileStore.kidsPIN.isEmpty ? "Set kids PIN" : "Change kids PIN") { settingPIN = true }
                         if !profileStore.kidsPIN.isEmpty { Button("Remove kids PIN") { profileStore.kidsPIN = "" } }
                         Text(profileStore.kidsPIN.isEmpty ? "No PIN: anyone can switch away from a kids profile."
-                                                          : "The PIN is needed to leave a kids profile.")
+                                                          : "The PIN is needed to leave a kids profile. With household sync it applies on every Apple TV.")
                             .font(.system(size: 22)).foregroundStyle(.secondary)
                     }
                     Text("On launch").font(.system(size: 24, weight: .semibold)).foregroundStyle(.secondary).padding(.top, 8)

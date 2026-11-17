@@ -71,7 +71,17 @@ enum BeebSyncClient {
     @Published var startup: String { didSet { UserDefaults.standard.set(startup, forKey: Self.startupKey) } }
     @Published var pickerRequired = false
     /// Optional 4-digit PIN needed to switch from a kids profile to another profile (stored on this Apple TV).
-    @Published var kidsPIN: String { didSet { UserDefaults.standard.set(kidsPIN, forKey: "beebKidsPIN") } }
+    @Published var kidsPIN: String {
+        didSet {
+            UserDefaults.standard.set(kidsPIN, forKey: "beebKidsPIN")
+            guard !adoptingPIN else { return }
+            pinUpdatedAt = Date(); UserDefaults.standard.set(pinUpdatedAt, forKey: "beebKidsPINUpdated")
+            scheduleSync()
+        }
+    }
+    /// The PIN is shared by the household when sync is on (newest change wins).
+    private var pinUpdatedAt: Date
+    private var adoptingPIN = false
     private var removed: [String: Date] = [:]
     private var syncTask: Task<Void, Never>?
 
@@ -82,6 +92,7 @@ enum BeebSyncClient {
         let d = UserDefaults.standard
         startup = d.string(forKey: Self.startupKey) ?? "last"
         kidsPIN = d.string(forKey: "beebKidsPIN") ?? ""
+        pinUpdatedAt = d.object(forKey: "beebKidsPINUpdated") as? Date ?? Date(timeIntervalSinceReferenceDate: 0)
         if let data = d.data(forKey: Self.listKey), let list = try? JSONDecoder().decode([BeebProfile].self, from: data) { profiles = list }
         if let data = d.data(forKey: Self.removedKey), let map = try? JSONDecoder().decode([String: Date].self, from: data) { removed = map }
         if profiles.isEmpty { profiles = [BeebProfile(id: Self.defaultID, name: "Me", updatedAt: Date(timeIntervalSinceReferenceDate: 0))]; saveList() }
@@ -183,6 +194,19 @@ enum BeebSyncClient {
             profiles = merged; removed = gone; saveList()
             if !profiles.contains(where: { $0.id == current }) { select(profiles[0].id) }
         }
+        await syncSettings()
+    }
+    /// Household settings shared through the server (currently the kids PIN).
+    private func syncSettings() async {
+        let record: [String: Any] = ["id": "kidsPIN", "updatedAt": pinUpdatedAt.timeIntervalSinceReferenceDate, "value": kidsPIN]
+        guard let reply = await BeebSyncClient.exchange(kind: "settings", profile: Self.householdID, records: [record], removed: [:]),
+              let remote = (reply["records"] as? [[String: Any]])?.first(where: { $0["id"] as? String == "kidsPIN" }),
+              let t = remote["updatedAt"] as? Double, t > pinUpdatedAt.timeIntervalSinceReferenceDate else { return }
+        adoptingPIN = true
+        kidsPIN = remote["value"] as? String ?? ""
+        adoptingPIN = false
+        pinUpdatedAt = Date(timeIntervalSinceReferenceDate: t)
+        UserDefaults.standard.set(pinUpdatedAt, forKey: "beebKidsPINUpdated")
     }
 
     /// One-off: data saved before profiles existed belongs to the default profile.
