@@ -8,7 +8,9 @@
 0000000000000000000001A1 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackExtras.swift; sourceTree = "<group>"; };
 000000000000000000000205 = {isa = PBXBuildFile; fileRef = 0000000000000000000001A1; };
 00000000000000000000019F = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchHistory.swift; sourceTree = "<group>"; };
+0000000000000000000F0001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Profiles.swift; sourceTree = "<group>"; };
 000000000000000000000203 = {isa = PBXBuildFile; fileRef = 00000000000000000000019F; };
+0000000000000000000F0002 = {isa = PBXBuildFile; fileRef = 0000000000000000000F0001; };
 0000000000000000000001A0 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContinueWatching.swift; sourceTree = "<group>"; };
 000000000000000000000204 = {isa = PBXBuildFile; fileRef = 0000000000000000000001A0; };
 00000000000000000000019E = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackPolicy.swift; sourceTree = "<group>"; };
@@ -128,6 +130,7 @@ E11100000000000000000002 = {isa = PBXBuildFile; fileRef = E111000000000000000000
                 000000000000000000000195,
                 000000000000000000000196,
                 00000000000000000000019F,
+                0000000000000000000F0001,
                 0000000000000000000001A1,
 0000000000000000000001A0,
                 00000000000000000000019E,
@@ -231,6 +234,7 @@ E11100000000000000000002 = {isa = PBXBuildFile; fileRef = E111000000000000000000
                 0000000000000000000001F9,
                 0000000000000000000001FA,
                 000000000000000000000203,
+                0000000000000000000F0002,
                 000000000000000000000206,
                 000000000000000000000207,
                 000000000000000000000208,

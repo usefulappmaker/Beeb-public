@@ -33,6 +33,16 @@ struct HomeView: View {
     @FocusState private var menuIconFocused: Bool
     @State private var sidebarOpen = false
     @State private var iconFocusRequest = 0
+    @ObservedObject private var profiles = ProfileStore.shared
+    @State private var showProfilePicker = ProfileStore.shared.pickerRequired
+    /// Last item in the top menu bar: the current person; opens the Who's watching picker.
+    @ViewBuilder private var profileTab: some View {
+        if profiles.profiles.count > 1 {
+            Button { profiles.pickerRequired = false; showProfilePicker = true } label: {
+                HStack(spacing: 8) { Image(systemName: "person.crop.circle.fill"); Text(profiles.currentProfile.name) }
+            }.buttonStyle(ProfilePillStyle()).accessibilityLabel("Profile \(profiles.currentProfile.name). Select to switch profile.")
+        }
+    }
     @Environment(\.scenePhase) private var phase
     private var navigationButton: some View {
         Button {
@@ -64,9 +74,17 @@ struct HomeView: View {
             Spacer(minLength: 0)
         }.padding(.horizontal, 64).padding(.top, 48).padding(.bottom, 16)
     }
-    @ViewBuilder private var navigationIcon: some View {
-        if usesSidebar { sidebarHeader }
-        else { horizontalHeader.focusSection().defaultFocus($focusedTab, tab) }
+    private var navigationIcon: some View {
+        Group {
+            if usesSidebar { sidebarHeader }
+            else { horizontalHeader.focusSection().defaultFocus($focusedTab, tab) }
+        }.fullScreenCover(isPresented: $showProfilePicker) {
+            WhoIsWatchingView(required: profiles.pickerRequired, dismiss: { showProfilePicker = false }) { id in
+                profiles.select(id)
+                profiles.pickerRequired = false
+                showProfilePicker = false
+            }
+        }
     }
     private var horizontalHeader: some View {
         HStack(spacing: modern ? 32 : 30) {
@@ -96,6 +114,7 @@ struct HomeView: View {
                         .accessibilityAddTraits(tab == value ? .isSelected : [])
                         .accessibilityIdentifier("BeebTopbar" + value.rawValue)
                 }
+                profileTab
             }.padding(modern ? 8 : 0)
                 .background {
                     if modern { Capsule().fill(.ultraThinMaterial).overlay { Capsule().strokeBorder(.white.opacity(0.18), lineWidth: 1) }.shadow(color: .black.opacity(0.3), radius: 20, y: 8) }
@@ -950,10 +969,75 @@ struct SettingsView: View {
     @AppStorage("modernNavigation") private var modernNavigation = "Sidebar"
     @AppStorage("bbcOneRegion") private var bbcOne = "bbc_one_london"
     @AppStorage("bbcTwoRegion") private var bbcTwo = "bbc_two_england"
+    @ObservedObject private var profileStore = ProfileStore.shared
+    @AppStorage(BeebSyncSettings.urlKey) private var syncURL = ""
+    @AppStorage(BeebSyncSettings.secretKey) private var syncSecret = ""
+    @State private var syncStatus = ""
+    @State private var profileName = ""
+    @State private var addingProfile = false
+    @State private var renamingProfile: String?
+    @State private var removingProfile: String?
+    private var startupChoices: [String] { ["last"] + profileStore.profiles.map(\.id) + ["ask"] }
+    private func startupLabel(_ value: String) -> String {
+        value == "last" ? "Last used" : value == "ask" ? "Ask who's watching" : "Always \(profileStore.name(value))"
+    }
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 30) {
                 Text("Settings").font(.system(size: 56, weight: .bold))   // UI-POLISH3 LOCAL PATCH
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Profiles").font(.system(size: 32, weight: .bold))
+                    Text("Each person has their own Continue Watching and Saved list.").font(.system(size: 22)).foregroundStyle(.secondary)
+                    ForEach(profileStore.profiles) { profile in
+                        HStack(spacing: 16) {
+                            Button { profileStore.select(profile.id) } label: {
+                                HStack(spacing: 14) {
+                                    Image(systemName: profile.id == profileStore.current ? "checkmark.circle.fill" : "person.crop.circle")
+                                        .foregroundStyle(profile.id == profileStore.current ? Color.pink : Color.secondary)
+                                    Text(profile.name)
+                                    Spacer()
+                                }.frame(width: 560, alignment: .leading)
+                            }
+                            Button("Rename") { profileName = profile.name; renamingProfile = profile.id }
+                            if profileStore.profiles.count > 1 { Button("Remove") { removingProfile = profile.id } }
+                        }
+                    }
+                    Button { profileName = ""; addingProfile = true } label: { Label("Add profile", systemImage: "plus") }
+                    Button {
+                        let choices = startupChoices
+                        let i = choices.firstIndex(of: profileStore.startup) ?? 0
+                        profileStore.startup = choices[(i + 1) % choices.count]
+                    } label: { Text("On launch: \(startupLabel(profileStore.startup))") }
+                }.padding(32).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 24))
+                    .alert("Add profile", isPresented: $addingProfile) {
+                        TextField("Name", text: $profileName)
+                        Button("Add") { profileStore.add(profileName) }
+                        Button("Cancel", role: .cancel) {}
+                    }
+                    .alert("Rename profile", isPresented: Binding(get: { renamingProfile != nil }, set: { if !$0 { renamingProfile = nil } })) {
+                        TextField("Name", text: $profileName)
+                        Button("Save") { if let id = renamingProfile { profileStore.rename(id, to: profileName) } }
+                        Button("Cancel", role: .cancel) {}
+                    }
+                    .alert("Remove \(profileStore.name(removingProfile ?? ""))?", isPresented: Binding(get: { removingProfile != nil }, set: { if !$0 { removingProfile = nil } })) {
+                        Button("Remove", role: .destructive) { if let id = removingProfile { profileStore.remove(id) } }
+                        Button("Cancel", role: .cancel) {}
+                    } message: { Text("Their Continue Watching and Saved list will be deleted on every Apple TV.") }
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Household sync").font(.system(size: 32, weight: .bold))
+                    Text("Optional. Shares profiles, Continue Watching and Saved between your Apple TVs through a sync server you run, for example the Home Assistant AppDaemon app. Leave the URL empty to keep everything on this Apple TV.")
+                        .font(.system(size: 22)).foregroundStyle(.secondary)
+                    TextField("Server URL, e.g. http://homeassistant.local:5050/api/appdaemon/beeb_history", text: $syncURL).frame(width: 1200)
+                    SecureField("Key", text: $syncSecret).frame(width: 1200)
+                    HStack(spacing: 24) {
+                        Button("Test connection") { Task { syncStatus = await BeebSyncClient.test() } }
+                        Text(syncStatus).font(.system(size: 22)).foregroundStyle(.secondary)
+                    }
+                }.padding(32).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 24))
+                    .onChange(of: syncURL) { _, _ in profileStore.scheduleSync(); NotificationCenter.default.post(name: ProfileStore.changed, object: nil) }
+                    .onChange(of: syncSecret) { _, _ in profileStore.scheduleSync(); NotificationCenter.default.post(name: ProfileStore.changed, object: nil) }
                 VStack(alignment: .leading, spacing: 24) {
                     Text("Homescreen Layout").font(.system(size: 32, weight: .bold))
                     BeebNavigationSegments(title: "Homescreen Layout", options: ["Modern", "Classic"], selection: $homescreenLayout)
@@ -1025,5 +1109,55 @@ private struct RootBackAction: ViewModifier {
     let action: () -> Void
     @ViewBuilder func body(content: Content) -> some View {
         if active { content.onExitCommand(perform: action) } else { content }
+    }
+}
+
+struct ProfilePillStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View { ProfilePillSurface(content: configuration.label, pressed: configuration.isPressed) }
+}
+private struct ProfilePillSurface<Content: View>: View {
+    let content: Content
+    let pressed: Bool
+    @Environment(\.isFocused) private var focused
+    var body: some View {
+        content.font(.system(size: 22, weight: .semibold))
+            .foregroundStyle(focused ? Color.black : Color.white.opacity(0.9))
+            .padding(.horizontal, 20).padding(.vertical, 16)
+            .background { Capsule().fill(focused ? Color.white : Color.white.opacity(0.08)) }
+            .shadow(color: .pink.opacity(focused ? 0.55 : 0), radius: 20)
+            .scaleEffect(pressed ? 0.96 : focused ? 1.06 : 1)
+            .animation(.easeOut(duration: 0.15), value: focused)
+            .focusEffectDisabled()
+    }
+}
+/// "Who's watching?" grid for any number of profiles. Back keeps the current profile unless a choice is required.
+struct WhoIsWatchingView: View {
+    @ObservedObject private var store = ProfileStore.shared
+    let required: Bool
+    let dismiss: () -> Void
+    let choose: (String) -> Void
+    @FocusState private var focused: String?
+    var body: some View {
+        VStack(spacing: 60) {
+            Text("Who's watching?").font(.system(size: 56, weight: .bold))
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 260, maximum: 300), spacing: 40)], spacing: 40) {
+                ForEach(store.profiles) { profile in
+                    Button { choose(profile.id) } label: {
+                        VStack(spacing: 18) {
+                            Text(String(profile.name.prefix(1)).uppercased()).font(.system(size: 80, weight: .bold))
+                                .frame(width: 200, height: 200).background(Circle().fill(Color.pink.opacity(0.85)))
+                                .overlay { if profile.id == store.current { Circle().strokeBorder(.white, lineWidth: 6) } }
+                            Text(profile.name).font(.system(size: 32, weight: .semibold)).lineLimit(1)
+                        }.padding(24)
+                    }.buttonStyle(ProgrammeCardStyle()).focused($focused, equals: profile.id)
+                }
+            }.frame(maxWidth: 1400)
+            if !required { Text("Press Back to keep \(store.currentProfile.name)").font(.system(size: 22)).foregroundStyle(.secondary) }
+        }.frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.black.opacity(0.55).ignoresSafeArea())
+        .background(.ultraThickMaterial)
+        .defaultFocus($focused, store.current)
+        .onExitCommand { if !required { dismiss() } }
+        .interactiveDismissDisabled(required)
     }
 }
