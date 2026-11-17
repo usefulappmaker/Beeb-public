@@ -83,7 +83,7 @@ struct DetailView: View {
                     Label(guidance, systemImage: "exclamationmark.triangle.fill").font(.callout).foregroundStyle(.orange)
                 }
                 if let error = playback.error { Text(error).foregroundStyle(.orange).font(.callout) }
-                else if playback.loading || playback.status != "Ready to play." {
+                else if playback.loading {
                     Text(playback.status).font(.callout).foregroundStyle(.secondary)
                 }
                 HStack(spacing: 24) {
@@ -171,6 +171,7 @@ private struct PrimaryPlaySurface<Content: View>: View {
     @Environment(\.isFocused) private var focused
     var body: some View {
         content.font(.system(size: 36, weight: .semibold)).foregroundStyle(.white)
+            .lineLimit(1).fixedSize()   // never truncate "Resume 1:02:03"
             .padding(.horizontal, 48).frame(minWidth: 260, minHeight: 84)
             .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Color.pink.opacity(focused ? 1 : 0.5)))
             .scaleEffect(pressed ? 0.97 : focused ? 1.08 : 1)
