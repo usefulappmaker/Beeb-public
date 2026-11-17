@@ -206,7 +206,7 @@ struct HomeView: View {
                             case .uhd: UHDCategoryView(index: index, catalogue: catalogue, library: library)
                             case .browse: BrowseView(catalogue: catalogue, library: library, index: index)
                             case .search: CatalogueSearchView(index: index, catalogue: catalogue, library: library)
-                            case .live: LiveView(launch: liveLaunch)
+                            case .live: LiveView(launch: liveLaunch, library: library)
                             case .saved: SavedProgrammes(catalogue: catalogue, library: library)
                             case .settings: SettingsView(catalogue: catalogue)
                             }
@@ -910,6 +910,12 @@ struct SavedProgrammes: View {
 }
 struct LiveView: View {
     var launch: LiveLaunch? = nil
+    var library: Library? = nil   // CHANNEL-GUIDE
+    @State private var selectedChannel: String?
+    @State private var guides: [String: ChannelGuide] = [:]
+    @State private var detail: Programme?
+    @FocusState private var stripFocus: String?
+    private var currentChannelID: String? { selectedChannel ?? state.channels.filter { !profileStore.kidsMode || Self.kidsChannels.contains($0.id) }.first?.id }
     @ObservedObject private var profileStore = ProfileStore.shared
     private static let kidsChannels: Set<String> = ["cbbc", "cbeebies"]
     @Environment(\.scenePhase) private var phase
@@ -918,29 +924,60 @@ struct LiveView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 30) {
-                Text("Live channels").font(.largeTitle).bold()
                 if state.channels.isEmpty && state.error == nil { ProgressView("Getting channels…") }
                 if let error = state.error { Text(error).foregroundStyle(.orange); Button("Retry channels") { state.retry += 1 } }
                 if let error = playback.error { Text(error).foregroundStyle(.orange) }
                 if playback.loading { HStack { ProgressView("Connecting to live channel…"); Button("Cancel") { playback.stop() } } }
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 370))], spacing: 30) {
-                    ForEach(state.channels.filter { !profileStore.kidsMode || Self.kidsChannels.contains($0.id) }) { channel in
-                        Button { playback.startLive(channel) { state.playing = true } } label: {
-                            VStack(alignment: .leading, spacing: 6) {   // LIVE-LOGOS
-                                ProgrammeThumbnail(url: channel.current?.image, uhd: false)
-                                    .overlay(alignment: .topLeading) { ChannelWordmark(id: channel.id, title: channel.title).padding(12) }
-                                    .overlay(alignment: .bottom) { LiveProgressLine(programme: channel.current) }
-                                    .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
-                                Text(channel.current?.title ?? channel.title).font(.system(size: 26, weight: .semibold)).lineLimit(1)
-                                    .padding(.top, 8)
-                                Text(channel.current.map { "Until " + $0.end.formatted(date: .omitted, time: .shortened) } ?? channel.title)
-                                    .font(.system(size: 21)).foregroundStyle(.secondary).lineLimit(1)
-                            }.padding(14).frame(maxWidth: .infinity, alignment: .leading)
-                        }.buttonStyle(ProgrammeCardStyle()).disabled(playback.loading).rememberSidebarFocus()
+                // CHANNEL-GUIDE: channel strip
+                ScrollView(.horizontal) {
+                    HStack(spacing: 14) {
+                        ForEach(state.channels.filter { !profileStore.kidsMode || Self.kidsChannels.contains($0.id) }) { channel in
+                            Button { playback.startLive(channel) { state.playing = true } } label: {
+                                Text(ChannelWordmark.style(id: channel.id, title: channel.title).label)
+                            }.buttonStyle(ChannelStripStyle(id: channel.id, title: channel.title, selected: currentChannelID == channel.id))
+                                .focused($stripFocus, equals: channel.id).disabled(playback.loading)
+                        }
+                    }.padding(.vertical, 20).padding(.horizontal, 8)
+                }.scrollClipDisabled().focusSection()
+                if let channel = state.channels.filter { !profileStore.kidsMode || Self.kidsChannels.contains($0.id) }.first(where: { $0.id == currentChannelID }) {
+                    let guide = guides[channel.id]
+                    let hide = profileStore.kidsMode
+                    ScrollView(.horizontal) {
+                        LazyHStack(alignment: .top, spacing: 40) {
+                            Button { playback.startLive(channel) { state.playing = true } } label: { OnNowCard(channel: channel) }
+                                .buttonStyle(ProgrammeCardStyle()).disabled(playback.loading)
+                            ForEach((guide?.featured ?? []).filter { !hide || ($0.programme.guidance ?? "").isEmpty }) { episode in
+                                Button { detail = episode.programme } label: { GuideCard(programme: episode.programme, width: 560) }
+                                    .buttonStyle(ProgrammeCardStyle())
+                            }
+                        }.padding(.vertical, 24).padding(.horizontal, 8)
+                    }.scrollClipDisabled().focusSection()
+                    if guide == nil { ProgressView("Getting \(channel.title) programmes…") }
+                    ForEach(guide?.rows ?? []) { row in
+                        let episodes = row.episodes.filter { !hide || ($0.programme.guidance ?? "").isEmpty }
+                        if !episodes.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(row.title).font(.system(size: 34, weight: .bold))
+                                ScrollView(.horizontal) {
+                                    LazyHStack(alignment: .top, spacing: 36) {
+                                        ForEach(episodes) { episode in
+                                            Button { detail = episode.programme } label: { GuideCard(programme: episode.programme, width: 440) }
+                                                .buttonStyle(ProgrammeCardStyle())
+                                        }
+                                    }.padding(.vertical, 20).padding(.horizontal, 8)
+                                }.scrollClipDisabled()
+                            }.focusSection()
+                        }
                     }
                 }
-            }.padding(60)
-        }.task(id: "\(state.retry)-\(phase)-\(state.playing)") {
+            }.padding(.horizontal, 60).padding(.vertical, 30)
+        }.onChange(of: stripFocus) { _, id in if let id { selectedChannel = id } }
+        .task(id: currentChannelID) {
+            guard let id = currentChannelID, guides[id] == nil else { return }
+            guides[id] = await ChannelGuideAPI.load(id)
+        }
+        .sheet(item: $detail) { programme in if let library { DetailView(programme: programme, library: library) } }
+        .task(id: "\(state.retry)-\(phase)-\(state.playing)") {
             guard phase == .active, !state.playing else { return }
             #if DEBUG
             if ProcessInfo.processInfo.environment["BEEB_LIVE_ROUTE_VALIDATE"] == "1" || ProcessInfo.processInfo.environment["BEEB_UI_PREVIEW"] == "review" { return }
@@ -1257,7 +1294,8 @@ struct ProfileEditView: View {
 struct ChannelWordmark: View {
     let id: String
     let title: String
-    private var style: (label: String, colour: Color) {
+    private var style: (label: String, colour: Color) { Self.style(id: id, title: title) }
+    static func style(id: String, title: String) -> (label: String, colour: Color) {
         switch true {
         case id.hasPrefix("bbc_one"): return ("ONE", Color(red: 0.89, green: 0.28, blue: 0.27))
         case id.hasPrefix("bbc_two"): return ("TWO", Color(red: 0.42, green: 0.23, blue: 0.62))
@@ -1380,5 +1418,102 @@ struct KidsHomeView: View {
             rows = loaded
             if loaded.isEmpty { error = "CBeebies and CBBC programmes couldn't be loaded. Try again later." }
         }
+    }
+}
+
+// CHANNEL-GUIDE: data + views
+struct ChannelGuide {
+    struct Row: Identifiable { let id: String; let title: String; let episodes: [CatalogueEpisode] }
+    var featured: [CatalogueEpisode] = []
+    var rows: [Row] = []
+}
+enum ChannelGuideAPI {
+    static func load(_ channelID: String) async -> ChannelGuide {
+        guard channelID.range(of: "^[a-z0-9_]+$", options: .regularExpression) != nil else { return ChannelGuide() }
+        let api = DiscoveryAPI()
+        func json(_ path: String) async -> [String: Any]? {
+            guard let url = URL(string: "https://ibl.api.bbc.co.uk/ibl/v1/" + path), let data = try? await api.fetch(url) else { return nil }
+            return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        }
+        var guide = ChannelGuide()
+        guard let elements = ((await json("channels/\(channelID)/highlights"))?["channel_highlights"] as? [String: Any])?["elements"] as? [[String: Any]] else { return guide }
+        var groups: [(String, String)] = []
+        for element in elements {
+            let type = element["type"] as? String ?? ""
+            if type == "episode", let episode = try? CatalogueAPI.episode(element) { guide.featured.append(episode) }
+            else if type.hasPrefix("group"), let id = element["id"] as? String, let title = element["title"] as? String,
+                    id.range(of: "^[a-z0-9]+$", options: .regularExpression) != nil { groups.append((id, title)) }
+        }
+        for (id, title) in groups.prefix(8) {
+            let items = ((await json("groups/\(id)/episodes?per_page=24"))?["group_episodes"] as? [String: Any])?["elements"] as? [[String: Any]] ?? []
+            let episodes = items.compactMap { try? CatalogueAPI.episode($0) }
+            if !episodes.isEmpty { guide.rows.append(.init(id: id, title: title, episodes: episodes)) }
+        }
+        return guide
+    }
+}
+/// Big wordmark in the channel strip: brand colour when focused, underline when it's the channel shown below.
+struct ChannelStripStyle: ButtonStyle {
+    let id: String
+    let title: String
+    let selected: Bool
+    func makeBody(configuration: Configuration) -> some View {
+        ChannelStripSurface(content: configuration.label, colour: ChannelWordmark.style(id: id, title: title).colour,
+                            selected: selected, pressed: configuration.isPressed)
+    }
+}
+private struct ChannelStripSurface<Content: View>: View {
+    let content: Content
+    let colour: Color
+    let selected: Bool
+    let pressed: Bool
+    @Environment(\.isFocused) private var focused
+    var body: some View {
+        content.font(.system(size: 40, weight: .heavy)).lineLimit(1).fixedSize()
+            .foregroundStyle(Color.white.opacity(focused || selected ? 1 : 0.7))
+            .padding(.horizontal, 30).frame(minWidth: 170, minHeight: 104)
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(focused ? colour : Color.white.opacity(0.04)))
+            .overlay(alignment: .bottom) { if selected && !focused { Capsule().fill(colour).frame(height: 5).padding(.horizontal, 22).offset(y: -8) } }
+            .scaleEffect(pressed ? 0.96 : focused ? 1.08 : 1)
+            .shadow(color: .black.opacity(focused ? 0.45 : 0), radius: 14, y: 6)
+            .animation(.easeOut(duration: 0.15), value: focused)
+            .focusEffectDisabled()
+    }
+}
+/// First card in the row: what's on now, with an ON NOW badge and progress line.
+struct OnNowCard: View {
+    let channel: LiveChannel
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ProgrammeThumbnail(url: channel.current?.image, uhd: false)
+                .overlay(alignment: .topLeading) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "dot.radiowaves.left.and.right")
+                        Text("ON NOW")
+                    }.font(.system(size: 22, weight: .heavy)).foregroundStyle(Color(red: 0.2, green: 0.85, blue: 0.75))
+                        .padding(.horizontal, 12).padding(.vertical, 6).background(.black.opacity(0.75), in: RoundedRectangle(cornerRadius: 8))
+                        .padding(12)
+                }
+                .overlay(alignment: .bottom) { LiveProgressLine(programme: channel.current) }
+                .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
+            Text(channel.current?.title ?? channel.title).font(.system(size: 28, weight: .semibold)).lineLimit(1).padding(.top, 8)
+            Text(channel.current.map { "Live until " + $0.end.formatted(date: .omitted, time: .shortened) } ?? "Watch live")
+                .font(.system(size: 21)).foregroundStyle(.secondary).lineLimit(1)
+        }.padding(14).frame(width: 640, alignment: .leading)
+    }
+}
+/// Programme card in the guide rows: the programme's name (as the official app does), subtitle underneath.
+struct GuideCard: View {
+    let programme: Programme
+    let width: CGFloat
+    @Environment(\.isFocused) private var focused
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ProgrammeThumbnail(url: programme.image, uhd: programme.uhdListed == true, hdr: programme.hdrListed == true)
+                .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
+            Text(programme.showTitle ?? programme.title).font(.system(size: 26, weight: .semibold)).lineLimit(1)
+                .foregroundStyle(focused ? Color.white : Color.white.opacity(0.8)).padding(.top, 8)
+            Text(programme.episodeSubtitle ?? " ").font(.system(size: 21)).foregroundStyle(.secondary).lineLimit(1)
+        }.padding(14).frame(width: width, alignment: .leading)
     }
 }
