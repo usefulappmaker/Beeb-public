@@ -27,6 +27,9 @@ This is a community fork of [usefulappmaker/Beeb-public](https://github.com/usef
   Off until you enter a server in **Settings › Household sync**. See [docs/SYNC.md](docs/SYNC.md).
 - **Live TV channel guide** in the style of the official Channels page: a strip of channel wordmarks, an ON NOW
   card with progress, the channel's featured programmes and themed rows.
+- **Watch live TV from the start:** *Watch from start* and *Back to live* buttons in the player (BBC keeps about
+  two hours), and an optional prompt — **Settings › Offer watch from start for live TV** — that asks "from the
+  start or live?" when you open a channel part-way through a programme.
 - **Interface polish:** a clear Play/Resume button, cards that lift on focus, medium-length synopses with an
   inline More, a 3–4 column episode grid with the newest series first, series tabs, a show-page
   "Start watching/Resume" button, Continue Watching progress lines, smaller Settings and page controls at the

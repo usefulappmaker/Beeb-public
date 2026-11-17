@@ -18,6 +18,8 @@ import AVKit
     @Published var displayTitle = ""
     @Published var displaySubtitle = ""
     @Published private(set) var isLive = false
+    /// Start of the programme on air when a live channel was opened (for From start).
+    @Published private(set) var liveProgrammeStart: Date?
     @Published private(set) var infoProgramme: Programme?
     @Published private(set) var infoArtwork: Data?
     @Published var additionalStreamError: String?
@@ -72,13 +74,48 @@ import AVKit
             return try await BBCService().source(for: programme, require1080: require1080)
         }
     }
-    func startLive(_ selected: LiveChannel, ready: @escaping () -> Void) {
+    func startLive(_ selected: LiveChannel, fromStart: Bool = false, ready: @escaping () -> Void) {
         let channel = RegionalChannels.resolve(selected)
-        begin(title: channel.current?.title ?? channel.title, subtitle: channel.title, minimumHeight: 0, isLive: true, ready: ready) {
+        let programmeStart = selected.current?.start ?? channel.current?.start
+        var startAtBeginning = fromStart
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["BEEB_TEST_FROM_START"] == "1" { startAtBeginning = true }
+        #endif
+        let wantsStart = startAtBeginning
+        begin(title: channel.current?.title ?? channel.title, subtitle: channel.title, minimumHeight: 0, isLive: true, ready: { [weak self] in
+            ready()
+            if wantsStart { Task { @MainActor [weak self] in await self?.watchFromStartWhenReady() } }
+        }) {
             #if DEBUG
             if ProcessInfo.processInfo.environment["BEEB_LIVE_ROUTE_VALIDATE"] == "1", let raw = ProcessInfo.processInfo.environment["BEEB_PLAYER_URL"], let url = URL(string: raw) { return PlaybackSource(url: url, requested1080: false) }
             #endif
             return try await DiscoveryAPI().liveSource(channel)
+        }
+        liveProgrammeStart = programmeStart
+    }
+    /// Live: jump back to the start of the programme on air (or the earliest point the stream keeps).
+    func watchFromStart() {
+        guard isLive, let item = player.currentItem else { return }
+        if let start = liveProgrammeStart {
+            item.seek(to: start) { [weak self] done in
+                if !done { Task { @MainActor [weak self] in self?.seekToEarliest() } }
+            }
+        } else { seekToEarliest() }
+    }
+    /// Live: jump back to the live edge.
+    func goLive() {
+        guard isLive, let range = player.currentItem?.seekableTimeRanges.last?.timeRangeValue else { return }
+        player.seek(to: CMTimeRangeGetEnd(range))
+    }
+    private func seekToEarliest() {
+        guard let range = player.currentItem?.seekableTimeRanges.first?.timeRangeValue else { return }
+        player.seek(to: range.start + CMTime(seconds: 2, preferredTimescale: 600))
+    }
+    private func watchFromStartWhenReady() async {
+        for _ in 0..<150 {   // up to 15 s for the stream to become ready
+            if player.currentItem?.status == .readyToPlay { watchFromStart(); return }
+            if player.currentItem?.status == .failed { return }
+            try? await Task.sleep(nanoseconds: 100_000_000)
         }
     }
     /// Resolve first: an off-air event must not destroy the working channel.
@@ -357,6 +394,8 @@ struct NativePlayer: UIViewControllerRepresentable {
         if model.isLive, !controller.speeds.isEmpty { controller.speeds = [] }
         container.configureMenus(isLive:model.isLive)
         container.chooseAdditional = { [weak model] stream in model?.switchAdditionalStream(stream) }
+        container.fromStart = { [weak model] in model?.watchFromStart() }
+        container.backToLive = { [weak model] in model?.goLive() }
         container.redAction.attributes = model.switchingAdditionalStream ? [.disabled] : []
         container.reportAdditionalError(model.additionalStreamError, id:model.additionalStreamErrorID)
         container.infoController.configure(model: model)
@@ -402,6 +441,10 @@ final class PlayerContainerViewController: UIViewController, UIGestureRecognizer
     var controlsVisible = false
     private(set) var infoVisible = false
     var chooseAdditional: ((AdditionalLiveStream) -> Void)?
+    var fromStart: (() -> Void)?
+    var backToLive: (() -> Void)?
+    lazy var fromStartAction = UIAction(title: "Watch from start", image: UIImage(systemName: "backward.end.fill")) { [weak self] _ in self?.fromStart?() }
+    lazy var liveAction = UIAction(title: "Back to live", image: UIImage(systemName: "forward.end.fill")) { [weak self] _ in self?.backToLive?() }
     private var liveMenus = false
     private var lastAdditionalError: UUID?
     lazy var redAction = UIAction(title:"Additional streams", image:Self.redIcon()) { [weak self] _ in self?.showAdditionalStreams() }
@@ -418,7 +461,7 @@ final class PlayerContainerViewController: UIViewController, UIGestureRecognizer
     func configureMenus(isLive: Bool) {
         guard liveMenus != isLive || playerController.transportBarCustomMenuItems.isEmpty else { return }
         liveMenus = isLive
-        playerController.transportBarCustomMenuItems = isLive ? [redAction,infoAction] : [infoAction]
+        playerController.transportBarCustomMenuItems = isLive ? [fromStartAction, liveAction, redAction, infoAction] : [infoAction]
     }
     private func showAdditionalStreams() {
         guard liveMenus, presentedViewController == nil, !infoVisible else { return }

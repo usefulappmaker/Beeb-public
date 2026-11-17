@@ -915,6 +915,15 @@ struct LiveView: View {
     @State private var guides: [String: ChannelGuide] = [:]
     @State private var detail: Programme?
     @FocusState private var stripFocus: String?
+    @AppStorage("offerLiveFromStart") private var offerFromStart = false
+    @State private var askFromStart: LiveChannel?
+    /// Ask "from the start or live?" when that's enabled and the programme has been on for over a minute.
+    private func play(_ channel: LiveChannel, fromStart: Bool? = nil) {
+        if fromStart == nil, offerFromStart, let start = channel.current?.start, Date().timeIntervalSince(start) > 60 {
+            askFromStart = channel; return
+        }
+        playback.startLive(channel, fromStart: fromStart ?? false) { state.playing = true }
+    }
     private var currentChannelID: String? { selectedChannel ?? state.channels.filter { !profileStore.kidsMode || Self.kidsChannels.contains($0.id) }.first?.id }
     @ObservedObject private var profileStore = ProfileStore.shared
     private static let kidsChannels: Set<String> = ["cbbc", "cbeebies"]
@@ -932,7 +941,7 @@ struct LiveView: View {
                 ScrollView(.horizontal) {
                     HStack(spacing: 6) {
                         ForEach(state.channels.filter { !profileStore.kidsMode || Self.kidsChannels.contains($0.id) }) { channel in
-                            Button { playback.startLive(channel) { state.playing = true } } label: {
+                            Button { play(channel) } label: {
                                 Text(ChannelWordmark.style(id: channel.id, title: channel.title).label)
                             }.buttonStyle(ChannelStripStyle(id: channel.id, title: channel.title, selected: currentChannelID == channel.id))
                                 .focused($stripFocus, equals: channel.id).disabled(playback.loading)
@@ -944,7 +953,7 @@ struct LiveView: View {
                     let hide = profileStore.kidsMode
                     ScrollView(.horizontal) {
                         LazyHStack(alignment: .top, spacing: 40) {
-                            Button { playback.startLive(channel) { state.playing = true } } label: { OnNowCard(channel: channel) }
+                            Button { play(channel) } label: { OnNowCard(channel: channel) }
                                 .buttonStyle(ProgrammeCardStyle()).disabled(playback.loading)
                             ForEach((guide?.featured ?? []).filter { !hide || ($0.programme.guidance ?? "").isEmpty }) { episode in
                                 Button { detail = episode.programme } label: { GuideCard(programme: episode.programme, width: 560) }
@@ -977,6 +986,14 @@ struct LiveView: View {
             guides[id] = await ChannelGuideAPI.load(id)
         }
         .sheet(item: $detail) { programme in if let library { DetailView(programme: programme, library: library) } }
+        .confirmationDialog(askFromStart.map { $0.current?.title ?? $0.title } ?? "",
+                            isPresented: Binding(get: { askFromStart != nil }, set: { if !$0 { askFromStart = nil } }), titleVisibility: .visible) {
+            if let channel = askFromStart {
+                Button("Watch from the start" + (channel.current?.start.map { " (" + $0.formatted(date: .omitted, time: .shortened) + ")" } ?? "")) { play(channel, fromStart: true) }
+                Button("Watch live") { play(channel, fromStart: false) }
+                Button("Cancel", role: .cancel) {}
+            }
+        }
         .task(id: "\(state.retry)-\(phase)-\(state.playing)") {
             guard phase == .active, !state.playing else { return }
             #if DEBUG
@@ -1005,7 +1022,7 @@ struct LiveView: View {
                 if channel == nil { channel = try await DiscoveryAPI().channels().first { $0.id == launch.channelID } }
                 try Task.checkCancellation()
                 guard let channel else { state.error = "This channel is not currently available."; return }
-                playback.startLive(channel) { state.playing = true }
+                play(channel)
             } catch { if !Task.isCancelled { state.error = error.localizedDescription } }
         }.fullScreenCover(isPresented: $state.playing, onDismiss: { playback.stop() }) { PlaybackScreen(model: playback) }
         .onDisappear { if !state.playing { playback.stop() } }
@@ -1016,6 +1033,7 @@ struct SettingsView: View {
     @Environment(\.beebFocusNavigation) private var focusNavigation
     @ObservedObject var catalogue: CatalogueStore
     @AppStorage("display4KUHDCategory") private var display4KUHDCategory = true
+    @AppStorage("offerLiveFromStart") private var offerLiveFromStart = false
     @AppStorage("homescreenLayout") private var homescreenLayout = "Modern"
     @AppStorage("modernNavigation") private var modernNavigation = "Sidebar"
     @AppStorage("bbcOneRegion") private var bbcOne = "bbc_one_london"
@@ -1108,6 +1126,9 @@ struct SettingsView: View {
                     }
                 }.padding(32).frame(maxWidth: .infinity, alignment: .leading)
                     .background(.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 24))
+                Toggle("Offer watch from start for live TV", isOn: $offerLiveFromStart)
+                Text("When on, opening a channel part-way through a programme asks whether to watch from the start or live. When off, live TV always starts live. You can also jump back with Watch from start in the player.")
+                    .font(.system(size: 22)).foregroundStyle(.secondary)
                 Toggle("Display 4K UHD category", isOn: $display4KUHDCategory)
                     .accessibilityIdentifier("Display4KUHDCategoryToggle").rememberSidebarFocus()
                 Text("Playback automatically selects the best available quality, including 4K HDR when available. Live channel quality adapts to the stream BBC supplies.").foregroundStyle(.secondary)
