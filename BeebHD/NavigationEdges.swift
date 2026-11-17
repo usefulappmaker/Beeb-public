@@ -116,7 +116,7 @@ struct BeebNavigationSegments: View {
         HStack(spacing: 14) {
             ForEach(options, id: \.self) { option in
                 Button { selection = option } label: {
-                    Text(option).font(.system(size: 26, weight: .semibold)).frame(maxWidth: .infinity, minHeight: 40)   // UI-POLISH3 LOCAL PATCH
+                    Text(option).font(.system(size: 26, weight: .semibold)).frame(maxWidth: .infinity, minHeight: 40)
                 }.buttonStyle(.bordered).buttonBorderShape(.roundedRectangle(radius: 12))
                     .tint(selection == option ? .pink : .gray)
                     .accessibilityAddTraits(selection == option ? .isSelected : [])

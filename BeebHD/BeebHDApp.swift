@@ -21,7 +21,7 @@ import SwiftUI
         }
     }
 }
-// UI-POLISH2 LOCAL PATCH: title always; synopsis only on the focused card (like the official app).
+// title always; synopsis only on the focused card (like the official app).
 struct ProgrammeCard: View {
     let programme: Programme
     @Environment(\.isFocused) private var focused
@@ -46,8 +46,8 @@ struct DetailView: View {
     @EnvironmentObject private var history: WatchHistory
     @Environment(\.dismiss) private var dismiss
     private var details: Programme { state.fresh ?? programme }
-    @FocusState private var playFocused: Bool   // UI-POLISH LOCAL PATCH
-    @State private var expanded = false   // UI-POLISH2 LOCAL PATCH
+    @FocusState private var playFocused: Bool
+    @State private var expanded = false
     private func clock(_ seconds: Double) -> String {
         let t = max(0, Int(seconds))
         return t >= 3600 ? String(format: "%d:%02d:%02d", t / 3600, t / 60 % 60, t % 60) : String(format: "%d:%02d", t / 60, t % 60)
@@ -66,7 +66,7 @@ struct DetailView: View {
                         Label(duration, systemImage: "clock").font(.callout).foregroundStyle(.secondary)
                     }
                 }
-                // UI-POLISH2: medium synopsis, inline More/Less for the long one fetched on open.
+                // medium synopsis, inline More/Less for the long one fetched on open.
                 let shortText = programme.summary
                 let longText = details.summary.count > shortText.count ? details.summary : shortText
                 Text(expanded ? longText : shortText).font(.system(size: 28)).foregroundStyle(.white.opacity(0.85))
@@ -107,7 +107,7 @@ struct DetailView: View {
             ProgrammeThumbnail(url: details.image ?? programme.image, uhd: false)
                 .frame(width: 540).shadow(color: .black.opacity(0.5), radius: 30, y: 14)
         }.padding(70)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)   // UI-POLISH3B: content fills the pop-up (glass background)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)   // content fills the pop-up (glass background)
         .defaultFocus($playFocused, true)
         .onExitCommand { dismiss() }
         .task {
@@ -141,7 +141,7 @@ struct OutlinedActionButtonStyle: ButtonStyle {
         OutlinedActionSurface(content: configuration.label, pressed: configuration.isPressed, square: square)
     }
 }
-// UI-POLISH LOCAL PATCH: focused = solid white + dark text + lift; unfocused = faint fill.
+// focused = solid white + dark text + lift; unfocused = faint fill.
 private struct OutlinedActionSurface<Content: View>: View {
     let content: Content
     let pressed: Bool
@@ -159,7 +159,7 @@ private struct OutlinedActionSurface<Content: View>: View {
             .focusEffectDisabled()
     }
 }
-/// UI-POLISH LOCAL PATCH: the main Play button.
+/// the main Play button.
 struct PrimaryPlayButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         PrimaryPlaySurface(content: configuration.label, pressed: configuration.isPressed)
@@ -192,7 +192,7 @@ struct ProgrammeBookmarkButton: View {
     }
 }
 
-// UI-POLISH2 LOCAL PATCH: small text link (More/Less).
+// small text link (More/Less).
 struct TextLinkButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View { TextLinkSurface(content: configuration.label) }
 }
@@ -208,7 +208,7 @@ private struct TextLinkSurface<Content: View>: View {
             .focusEffectDisabled()
     }
 }
-// UI-POLISH2 LOCAL PATCH: series selector tile (pink bar under the selected series).
+// series selector tile (pink bar under the selected series).
 struct SeriesTabStyle: ButtonStyle {
     var selected: Bool
     func makeBody(configuration: Configuration) -> some View {

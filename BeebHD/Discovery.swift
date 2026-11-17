@@ -19,7 +19,7 @@ struct LiveProgramme: Codable, Hashable {
     let subtitle: String
     let image: URL?
     let end: Date
-    var start: Date? = nil   // LIVE-LOGOS: for the progress bar
+    var start: Date? = nil   // for the progress bar
 }
 struct LiveChannel: Codable, Identifiable, Hashable {
     let id: String

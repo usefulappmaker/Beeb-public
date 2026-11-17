@@ -60,7 +60,7 @@ struct CatalogueSearchView: View {
                         }
                     }
                     if results.isEmpty { Text("No results.") }
-                    if pages > 1 {   // UI-POLISH LOCAL PATCH: pager at the bottom too
+                    if pages > 1 {   // pager at the bottom too
                         HStack(spacing: 24) {
                             Spacer()
                             Button("Previous") { page -= 1 }.disabled(page <= 1)

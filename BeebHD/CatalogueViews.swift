@@ -728,7 +728,7 @@ struct ProgrammeThumbnail: View {
 struct ProgrammeCardStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View { ProgrammeCardSurface(content: configuration.label, pressed: configuration.isPressed) }
 }
-// UI-POLISH LOCAL PATCH: no slab/outline; focused card lifts, others dim slightly.
+// no slab/outline; focused card lifts, others dim slightly.
 private struct ProgrammeCardSurface<Content: View>: View {
     let content: Content
     let pressed: Bool
@@ -784,7 +784,7 @@ struct CatalogueShowView: View {
     @StateObject private var bookmarkFocus = BookmarkFocusDestination()
     @State private var episodeColumns = 5
     @FocusState private var focusedEpisode: String?
-    @EnvironmentObject private var history: WatchHistory   // UI-POLISH4 LOCAL PATCH
+    @EnvironmentObject private var history: WatchHistory
     /// What the big button should open: resume the part-watched episode, the next one after a finished one,
     /// or the first episode of the oldest series.
     private var watchTarget: (label: String, programme: Programme, subtitle: String)? {
@@ -798,7 +798,7 @@ struct CatalogueShowView: View {
     var current: CatalogueShow { state.show ?? show }
     var orderedSeries: [CatalogueSeries] { EpisodeSequence.orderedSeries(current.series) }
     var selectedEpisodes: [CatalogueEpisode] {
-        let group = orderedSeries.first { $0.id == state.seriesID } ?? orderedSeries.last   // UI-POLISH3B: newest series by default
+        let group = orderedSeries.first { $0.id == state.seriesID } ?? orderedSeries.last   // newest series by default
         let episodes = EpisodeSequence.ordered(group?.episodes ?? [])
         return ProfileStore.shared.kidsMode ? episodes.filter { ($0.programme.guidance ?? "").isEmpty } : episodes
     }
@@ -813,7 +813,7 @@ struct CatalogueShowView: View {
                         .background(BookmarkFocusAnchor(destination: bookmarkFocus))
                 }.focusSection()
                 Text(current.summary).font(.system(size: 28)).foregroundStyle(.secondary).lineLimit(5)
-                if let target = watchTarget {   // UI-POLISH4: Start watching / Resume
+                if let target = watchTarget {   // Start watching / Resume
                     HStack(spacing: 28) {
                         Button { state.selection = target.programme } label: {
                             HStack(spacing: 14) { Image(systemName: "play.fill"); Text(target.label) }
@@ -834,7 +834,7 @@ struct CatalogueShowView: View {
                                     .buttonStyle(SeriesTabStyle(selected: (state.seriesID.isEmpty ? orderedSeries.last?.id : state.seriesID) == series.id))
                             }
                         }.padding(.vertical, 30).padding(.horizontal, 24)
-                    }.scrollClipDisabled().padding(.horizontal, -24).focusSection()   // UI-POLISH3B: Up from any episode lands here
+                    }.scrollClipDisabled().padding(.horizontal, -24).focusSection()   // Up from any episode lands here
                 }
                 if selectedEpisodes.count > 30 {
                     HStack(spacing: 24) {
@@ -843,7 +843,7 @@ struct CatalogueShowView: View {
                         Button("More episodes") { state.episodePage += 1 }.disabled(state.episodePage * 30 >= selectedEpisodes.count)
                     }
                 }
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 380), spacing: 36)], spacing: 30) {  // UI-POLISH2 LOCAL PATCH: 4 columns (3 in sidebar layout)
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 380), spacing: 36)], spacing: 30) {  // 4 columns (3 in sidebar layout)
                     ForEach(visibleEpisodes) { episode in
                         Button { state.selection = episode.programme } label: { ProgrammeCard(programme: episode.programme) }.buttonStyle(ProgrammeCardStyle()).focused($focusedEpisode, equals: episode.id)
                     }
@@ -859,7 +859,7 @@ struct CatalogueShowView: View {
                         .frame(height: 24).offset(y: -26)
                 }
                 if state.show != nil && selectedEpisodes.isEmpty { Text("No episodes are currently available.").foregroundStyle(.secondary) }
-                if selectedEpisodes.count > 30 {   // UI-POLISH LOCAL PATCH: pager at the bottom too
+                if selectedEpisodes.count > 30 {   // pager at the bottom too
                     HStack(spacing: 24) {
                         Button("Previous episodes") { state.episodePage -= 1 }.disabled(state.episodePage <= 1)
                         Text("Episodes \((state.episodePage - 1) * 30 + 1)–\(min(state.episodePage * 30, selectedEpisodes.count))")
@@ -910,7 +910,7 @@ struct SavedProgrammes: View {
 }
 struct LiveView: View {
     var launch: LiveLaunch? = nil
-    var library: Library? = nil   // CHANNEL-GUIDE
+    var library: Library? = nil
     @State private var selectedChannel: String?
     @State private var guides: [String: ChannelGuide] = [:]
     @State private var detail: Programme?
@@ -928,7 +928,7 @@ struct LiveView: View {
                 if let error = state.error { Text(error).foregroundStyle(.orange); Button("Retry channels") { state.retry += 1 } }
                 if let error = playback.error { Text(error).foregroundStyle(.orange) }
                 if playback.loading { HStack { ProgressView("Connecting to live channel…"); Button("Cancel") { playback.stop() } } }
-                // CHANNEL-GUIDE: channel strip
+                // channel strip
                 ScrollView(.horizontal) {
                     HStack(spacing: 6) {
                         ForEach(state.channels.filter { !profileStore.kidsMode || Self.kidsChannels.contains($0.id) }) { channel in
@@ -1034,7 +1034,7 @@ struct SettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 30) {
-                Text("Settings").font(.system(size: 56, weight: .bold))   // UI-POLISH3 LOCAL PATCH
+                Text("Settings").font(.system(size: 56, weight: .bold))
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Profiles").font(.system(size: 32, weight: .bold))
                     Text("Each person has their own Continue Watching and Saved list.").font(.system(size: 22)).foregroundStyle(.secondary)
@@ -1290,7 +1290,7 @@ struct ProfileEditView: View {
     }
 }
 
-// LIVE-LOGOS: typographic channel wordmark, in the style of the official app's channel strip.
+// typographic channel wordmark, in the style of the official app's channel strip.
 struct ChannelWordmark: View {
     let id: String
     let title: String
@@ -1421,7 +1421,7 @@ struct KidsHomeView: View {
     }
 }
 
-// CHANNEL-GUIDE: data + views
+// data + views
 struct ChannelGuide {
     struct Row: Identifiable { let id: String; let title: String; let episodes: [CatalogueEpisode] }
     var featured: [CatalogueEpisode] = []

@@ -67,7 +67,7 @@ struct ContinueWatchingRow: View {
         }
     }
 }
-// UI-POLISH4 LOCAL PATCH: progress line on the picture, label above the title (official-app style).
+// progress line on the picture, label above the title (official-app style).
 struct ContinueCard: View {
     let record: WatchRecord
     @Environment(\.isFocused) private var focused
