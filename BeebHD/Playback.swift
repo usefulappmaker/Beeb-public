@@ -96,11 +96,20 @@ import AVKit
     /// Live: jump back to the start of the programme on air (or the earliest point the stream keeps).
     func watchFromStart() {
         guard isLive, let item = player.currentItem else { return }
-        if let start = liveProgrammeStart {
+        guard let start = liveProgrammeStart else { seekToEarliest(); return }
+        if item.currentDate() != nil {   // the stream carries clock times: seek straight to the start time
             item.seek(to: start) { [weak self] done in
-                if !done { Task { @MainActor [weak self] in self?.seekToEarliest() } }
+                if !done { Task { @MainActor [weak self] in self?.seekBack(to: start) } }
             }
-        } else { seekToEarliest() }
+        } else { seekBack(to: start) }
+    }
+    /// Without clock times: the live edge is "now" minus the stream's delay, so step back by the programme's age.
+    private func seekBack(to start: Date) {
+        guard let range = player.currentItem?.seekableTimeRanges.last?.timeRangeValue else { return }
+        let liveDelay = 20.0   // typical BBC live latency; landing a few seconds early beats missing the opening
+        let back = max(0, Date().timeIntervalSince(start) - liveDelay)
+        let target = max(range.start.seconds + 2, CMTimeRangeGetEnd(range).seconds - back)
+        player.seek(to: CMTime(seconds: target, preferredTimescale: 600))
     }
     /// Live: jump back to the live edge.
     func goLive() {
