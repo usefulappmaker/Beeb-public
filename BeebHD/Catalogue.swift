@@ -98,7 +98,7 @@ struct CatalogueAPI {
         } else { seriesTitle = "Episodes" }
         let guidance = ((version["guidance"] as? [String: Any])?["text"] as? [String: Any])?["large"] as? String
         var p = Programme(id: id, title: subtitle.isEmpty ? title : "\(title) — \(subtitle)",
-                          summary: ["large", "medium", "small"].compactMap { (value["synopses"] as? [String: Any])?[$0] as? String }.first { !$0.isEmpty } ?? "",
+                          summary: ["medium", "small", "large"].compactMap { (value["synopses"] as? [String: Any])?[$0] as? String }.first { !$0.isEmpty } ?? "",  // UI-POLISH2 LOCAL PATCH: medium first
                           image: episodeImage(value["images"]),
                           version: version["id"] as? String ?? "", guidance: guidance)
         p.uhdListed = !["available", ""].contains(value["status"] as? String ?? "") ? false : eligible.contains { $0["uhd"] as? Bool == true }

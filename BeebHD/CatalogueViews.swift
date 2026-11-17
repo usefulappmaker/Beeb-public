@@ -703,17 +703,18 @@ struct ProgrammeThumbnail: View {
 struct ProgrammeCardStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View { ProgrammeCardSurface(content: configuration.label, pressed: configuration.isPressed) }
 }
+// UI-POLISH LOCAL PATCH: no slab/outline; focused card lifts, others dim slightly.
 private struct ProgrammeCardSurface<Content: View>: View {
     let content: Content
     let pressed: Bool
     @Environment(\.isFocused) private var focused
     var body: some View {
         content
-            .background(focused ? Color.white.opacity(0.16) : Color.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 16))
-            .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(focused ? .white : .clear, lineWidth: 3) }
-            .scaleEffect(pressed ? 0.99 : focused ? 1.045 : 1)
-            .shadow(color: .black.opacity(focused ? 0.4 : 0), radius: 16, y: 8)
-            .animation(.easeOut(duration: 0.15), value: focused)
+            .background(Color.white.opacity(focused ? 0.12 : 0), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .opacity(focused ? 1 : 0.82)
+            .scaleEffect(pressed ? 0.98 : focused ? 1.06 : 1)
+            .shadow(color: .black.opacity(focused ? 0.55 : 0), radius: 26, y: 14)
+            .animation(.easeOut(duration: 0.18), value: focused)
             .focusEffectDisabled().zIndex(focused ? 1 : 0)
     }
 }
@@ -735,8 +736,8 @@ struct ShowCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             ProgrammeThumbnail(url: show.image, uhd: show.uhdListed == true, hdr: show.hdrListed == true)
-            Text(show.title).font(.headline).lineLimit(2)
-                .frame(maxWidth: .infinity, minHeight: 60, maxHeight: 60, alignment: .topLeading)
+            Text(show.title).font(.system(size: 26, weight: .semibold)).lineLimit(2)
+                .frame(maxWidth: .infinity, minHeight: 64, maxHeight: 64, alignment: .topLeading)
 
         }.padding(12).frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -758,10 +759,21 @@ struct CatalogueShowView: View {
     @StateObject private var bookmarkFocus = BookmarkFocusDestination()
     @State private var episodeColumns = 5
     @FocusState private var focusedEpisode: String?
+    @EnvironmentObject private var history: WatchHistory   // UI-POLISH4 LOCAL PATCH
+    /// What the big button should open: resume the part-watched episode, the next one after a finished one,
+    /// or the first episode of the oldest series.
+    private var watchTarget: (label: String, programme: Programme, subtitle: String)? {
+        if let record = history.records.first(where: { $0.id == current.id }) {
+            if !record.completed { return ("Resume", record.episode.programme, record.episode.subtitle) }
+            if let next = record.nextEpisode { return ("Next episode", next.programme, next.subtitle) }
+        }
+        guard let series = orderedSeries.first, let first = EpisodeSequence.ordered(series.episodes).first else { return nil }
+        return ("Start watching", first.programme, first.subtitle)
+    }
     var current: CatalogueShow { state.show ?? show }
     var orderedSeries: [CatalogueSeries] { EpisodeSequence.orderedSeries(current.series) }
     var selectedEpisodes: [CatalogueEpisode] {
-        let group = orderedSeries.first { $0.id == state.seriesID } ?? orderedSeries.first
+        let group = orderedSeries.first { $0.id == state.seriesID } ?? orderedSeries.last   // UI-POLISH3B: newest series by default
         return EpisodeSequence.ordered(group?.episodes ?? [])
     }
     var visibleEpisodes: [CatalogueEpisode] { Array(selectedEpisodes.dropFirst((state.episodePage - 1) * 30).prefix(30)) }
@@ -774,7 +786,18 @@ struct CatalogueShowView: View {
                     ProgrammeBookmarkButton(show: current, library: library)
                         .background(BookmarkFocusAnchor(destination: bookmarkFocus))
                 }.focusSection()
-                Text(current.summary).font(.title3).foregroundStyle(.secondary)
+                Text(current.summary).font(.system(size: 28)).foregroundStyle(.secondary).lineLimit(5)
+                if let target = watchTarget {   // UI-POLISH4: Start watching / Resume
+                    HStack(spacing: 28) {
+                        Button { state.selection = target.programme } label: {
+                            HStack(spacing: 14) { Image(systemName: "play.fill"); Text(target.label) }
+                        }.buttonStyle(PrimaryPlayButtonStyle())
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(target.label == "Resume" ? "Continue" : target.label).font(.system(size: 22)).foregroundStyle(.secondary)
+                            Text(target.subtitle).font(.system(size: 30, weight: .semibold)).lineLimit(1)
+                        }
+                    }.padding(.vertical, 8).focusSection()
+                }
                 if state.show == nil && state.error == nil { ProgressView("Getting series and episodes…") }
                 if let error = state.error { Text(error).foregroundStyle(.orange); Button("Retry") { state.retry += 1 } }
                 if orderedSeries.count > 1 {
@@ -782,10 +805,10 @@ struct CatalogueShowView: View {
                         HStack(spacing: 20) {
                             ForEach(orderedSeries) { series in
                                 Button(series.title) { state.seriesID = series.id; state.episodePage = 1 }
-                                    .tint((state.seriesID.isEmpty ? orderedSeries.first?.id : state.seriesID) == series.id ? .pink : .gray)
+                                    .buttonStyle(SeriesTabStyle(selected: (state.seriesID.isEmpty ? orderedSeries.last?.id : state.seriesID) == series.id))
                             }
                         }.padding(.vertical, 30).padding(.horizontal, 24)
-                    }.scrollClipDisabled().padding(.horizontal, -24)
+                    }.scrollClipDisabled().padding(.horizontal, -24).focusSection()   // UI-POLISH3B: Up from any episode lands here
                 }
                 if selectedEpisodes.count > 30 {
                     HStack(spacing: 24) {
@@ -794,29 +817,36 @@ struct CatalogueShowView: View {
                         Button("More episodes") { state.episodePage += 1 }.disabled(state.episodePage * 30 >= selectedEpisodes.count)
                     }
                 }
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 330), spacing: 30)], spacing: 30) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 380), spacing: 36)], spacing: 30) {  // UI-POLISH2 LOCAL PATCH: 4 columns (3 in sidebar layout)
                     ForEach(visibleEpisodes) { episode in
                         Button { state.selection = episode.programme } label: { ProgrammeCard(programme: episode.programme) }.buttonStyle(ProgrammeCardStyle()).focused($focusedEpisode, equals: episode.id)
                     }
                 }
                 .background {
                     GeometryReader { geometry in
-                        Color.clear.onAppear { episodeColumns = max(1, Int((geometry.size.width + 30) / 360)) }
-                            .onChange(of: geometry.size.width) { _, width in episodeColumns = max(1, Int((width + 30) / 360)) }
+                        Color.clear.onAppear { episodeColumns = max(1, Int((geometry.size.width + 36) / 416)) }
+                            .onChange(of: geometry.size.width) { _, width in episodeColumns = max(1, Int((width + 36) / 416)) }
                     }
                 }
                 .background(alignment: .top) {
-                    WideBookmarkFocusGuide(destination: bookmarkFocus, enabled: visibleEpisodes.prefix(episodeColumns).contains { $0.id == focusedEpisode })
+                    WideBookmarkFocusGuide(destination: bookmarkFocus, enabled: orderedSeries.count <= 1 && visibleEpisodes.prefix(episodeColumns).contains { $0.id == focusedEpisode })
                         .frame(height: 24).offset(y: -26)
                 }
                 if state.show != nil && selectedEpisodes.isEmpty { Text("No episodes are currently available.").foregroundStyle(.secondary) }
+                if selectedEpisodes.count > 30 {   // UI-POLISH LOCAL PATCH: pager at the bottom too
+                    HStack(spacing: 24) {
+                        Button("Previous episodes") { state.episodePage -= 1 }.disabled(state.episodePage <= 1)
+                        Text("Episodes \((state.episodePage - 1) * 30 + 1)–\(min(state.episodePage * 30, selectedEpisodes.count))")
+                        Button("More episodes") { state.episodePage += 1 }.disabled(state.episodePage * 30 >= selectedEpisodes.count)
+                    }.padding(.top, 20)
+                }
             }.padding(60)
         }.task(id: state.retry) {
             state.error = nil
             do {
                 state.show = try await catalogue.open(show)
                 if preferUHDSeries && state.seriesID.isEmpty {
-                    state.seriesID = orderedSeries.first(where: { $0.episodes.contains { $0.programme.uhdListed == true } })?.id ?? ""
+                    state.seriesID = orderedSeries.last(where: { $0.episodes.contains { $0.programme.uhdListed == true } })?.id ?? ""
                 }
             } catch { if !Task.isCancelled { state.error = error.localizedDescription } }
         }.defaultFocus($focusedEpisode, visibleEpisodes.first?.id)
@@ -923,15 +953,15 @@ struct SettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 30) {
-                Text("Settings").font(.largeTitle).bold()
+                Text("Settings").font(.system(size: 56, weight: .bold))   // UI-POLISH3 LOCAL PATCH
                 VStack(alignment: .leading, spacing: 24) {
-                    Text("Homescreen Layout").font(.title2).bold()
+                    Text("Homescreen Layout").font(.system(size: 32, weight: .bold))
                     BeebNavigationSegments(title: "Homescreen Layout", options: ["Modern", "Classic"], selection: $homescreenLayout)
-                        .frame(width: 700).accessibilityIdentifier("HomescreenLayoutPicker")
+                        .frame(width: 520).accessibilityIdentifier("HomescreenLayoutPicker")
                     if homescreenLayout == "Modern" {
-                        Text("Navigation").font(.headline).foregroundStyle(.secondary)
+                        Text("Navigation").font(.system(size: 24, weight: .semibold)).foregroundStyle(.secondary)
                         BeebNavigationSegments(title: "Modern Navigation", options: ["Topbar", "Sidebar"], selection: $modernNavigation)
-                            .frame(width: 700).accessibilityIdentifier("ModernNavigationPicker")
+                            .frame(width: 520).accessibilityIdentifier("ModernNavigationPicker")
                     }
                 }.padding(32).frame(maxWidth: .infinity, alignment: .leading)
                     .background(.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 24))
@@ -949,7 +979,7 @@ struct SettingsView: View {
                 if let warning = catalogue.storageWarning { Text(warning).foregroundStyle(.orange) }
                 UHDSetupView()
                 Text("Beeb \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "") • Independent BBC player").font(.caption).foregroundStyle(.secondary)
-            }.padding(60)
+            }.font(.system(size: 26)).padding(60)
         }
     }
 }
@@ -959,7 +989,7 @@ private struct RegionSettingLabel: View {
     let value: String
     var body: some View {
         HStack { Text(title); Spacer(); Text(value).foregroundStyle(.secondary); Image(systemName: "chevron.right") }
-            .frame(maxWidth: .infinity).padding(.vertical, 8)
+            .frame(maxWidth: .infinity).padding(.vertical, 0)
     }
 }
 private struct RegionSelectionView: View {
@@ -969,9 +999,9 @@ private struct RegionSelectionView: View {
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
-            Text(title).font(.largeTitle).bold()
+            Text(title).font(.system(size: 52, weight: .bold))
             ScrollView {
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 20) {
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 36), GridItem(.flexible())], spacing: 22) {
                     ForEach(choices) { choice in
                         Button {
                             selection = choice.id
@@ -979,12 +1009,12 @@ private struct RegionSelectionView: View {
                         } label: {
                             HStack {
                                 Text(choice.title); Spacer()
-                                Image(systemName: selection == choice.id ? "checkmark.circle.fill" : "circle").opacity(selection == choice.id ? 1 : 0.3)
+                                Image(systemName: selection == choice.id ? "checkmark.circle.fill" : "circle").opacity(selection == choice.id ? 1 : 0.3).symbolRenderingMode(.palette).foregroundStyle(selection == choice.id ? Color.pink : Color.secondary)
                             }.frame(maxWidth: .infinity).padding(.horizontal, 16).padding(.vertical, 14)
                         }.buttonStyle(OutlinedActionButtonStyle())
                     }
-                }.padding(12)
-            }
+                }.padding(.horizontal, 36).padding(.vertical, 20)
+            }.scrollClipDisabled()
         }.padding(60)
         .onExitCommand { dismiss() }
     }
