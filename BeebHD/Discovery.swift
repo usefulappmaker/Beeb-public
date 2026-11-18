@@ -19,6 +19,7 @@ struct LiveProgramme: Codable, Hashable {
     let subtitle: String
     let image: URL?
     let end: Date
+    var start: Date? = nil   // for the progress bar
 }
 struct LiveChannel: Codable, Identifiable, Hashable {
     let id: String
@@ -147,7 +148,7 @@ struct DiscoveryAPI {
                   start <= now, now < end, broadcast["blanked"] as? Bool != true,
                   let episode = broadcast["episode"] as? [String: Any], let title = episode["title"] as? String else { continue }
             return LiveProgramme(title: title, subtitle: episode["subtitle"] as? String ?? "",
-                image: CatalogueAPI.programmeImage(episode["images"]), end: end)
+                image: CatalogueAPI.programmeImage(episode["images"]), end: end, start: start)
         }
         return nil
     }
