@@ -1,3 +1,23 @@
+# Beeb 0.11.0: profiles, kids mode, TV guide, Top Shelf choices and Beeb for Mac
+
+Changes since **0.10.9**. With thanks to community contributors lewisburgess (#10), threepeakschallenge (#1), videojedi (#6, #7) and ChristopherJohnDillon (#8, #9).
+
+- **Profiles:** each person gets their own Continue Watching and Saved list. Add, rename and remove profiles in Settings → Profiles; switch with the profile button in the top bar. Choose last used, a fixed profile or ask on launch.
+- **Kids mode:** CBeebies/CBBC only, guidance-flagged programmes hidden, no Search, Browse, 4K or Settings, and an optional kids PIN.
+- **Household sync (optional):** share profiles, Continue Watching, Saved and the kids PIN between Apple TVs through a self-hosted server (Home Assistant AppDaemon app or standalone Python/Docker). Off until configured. See docs/SYNC.md.
+- **Channels page:** Live is renamed Channels, with a channel wordmark strip, an ON NOW card with progress, featured programmes and themed rows. Channel links follow your chosen BBC One/Two region.
+- **TV guide:** a Channels | Guide selector adds a timeline of every channel, up to eight hours back. Live cells play the channel; programmes already on iPlayer offer Watch on demand. Refreshes every ten minutes while visible. Kids profiles see CBBC/CBeebies only.
+- **Watch from start:** Watch from start and Live buttons in the live player, the real time of day on live TV, and an optional "from the start or live?" prompt in Settings.
+- **Top Shelf choices:** Settings → Top Shelf offers Live TV (default), Continue Watching, Saved or Mix. Continue Watching resumes or plays the next episode; Saved opens the programme. Uses a new App Group shared by the app and extension.
+- **Responsive search:** catalogue search runs in a background actor, coalesces dictated words and never shows stale results.
+- **Programme pages:** 3–4 column episode grid, newest series first, series tabs, Start watching/Resume, inline More for synopses. Up from the first episode row reaches the series tabs and the Previous/More episodes controls before Saved (fixes #4).
+- **Interface polish:** clearer Play/Resume, cards lift on focus, Continue Watching progress lines, page controls at the bottom of long lists, focus-friendly Settings sections.
+- **Beeb for Mac (preview):** new macOS 14 app sharing the tvOS sources: sidebar navigation, programme pages, Continue Watching, channel guide, AVKit player with subtitles, audio, speeds and Picture in Picture, and one-button BBC UHD setup. UHD needs a development-signed build.
+- **Renew tooling:** scripts to rebuild and reinstall on several Apple TVs for free 7-day Apple accounts, optionally from an always-on Mac.
+- **Release tooling:** the release checker accepts the reviewed sync and renew templates; history and library tests include profile support.
+
+---
+
 # Beeb 0.10.9 hotfix: one-step BBC UHD setup and navigation fixes
 
 Changes since **0.10.8**:

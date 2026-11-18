@@ -9,7 +9,11 @@ ROOT = Path(__file__).resolve().parents[1]
 EXCLUDED = {'.git', 'build', 'dist', '__pycache__', '.venv-setup', '.venv', '__MACOSX'}
 SUFFIXES = {'.swift', '.plist', '.entitlements', '.pbxproj', '.xcscheme',
             '.xcworkspacedata', '.png', '.md', '.txt', '.py', '.sh', '.command', '.json', '.yml'}
-ROOT_NAMES = {'.gitignore', '.gitattributes'}
+ROOT_NAMES = {'.gitignore', '.gitattributes',
+              # Reviewed templates for the optional sync server and renew tooling (placeholders only).
+              'sync-server/appdaemon/apps.yaml.example', 'sync-server/standalone/Dockerfile',
+              'tools/renew/com.example.beeb-renew.plist.template', 'tools/renew/devices.txt.example',
+              'tools/renew/renew.conf.example'}
 PATTERNS = {
     'local account path': re.compile(rb'/(?:Users|home)/[A-Za-z0-9_.-]+/'),
     'private key': re.compile(rb'-----BEGIN (?:RSA |EC |OPENSSH |ENCRYPTED )?PRIVATE KEY-----[ \t\r\n]+[A-Za-z0-9+/]{32,}'),

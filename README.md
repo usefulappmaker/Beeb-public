@@ -12,41 +12,30 @@ This is an unofficial project, not produced or endorsed by the BBC. Choose **sou
 
 [Install from source](#install-on-apple-tv) · [Install the unsigned IPA](INSTALL-IPA.md) · [Enable BBC UHD](#enable-bbc-uhd) · [Troubleshooting](TROUBLESHOOTING.md)
 
-## About this fork
+## New in 0.11.0
 
-This is a community fork of [usefulappmaker/Beeb-public](https://github.com/usefulappmaker/Beeb-public), based on
-0.10.9 (build 40). It adds:
+Beeb 0.11.0 is the biggest update yet, with community contributions from [lewisburgess](https://github.com/lewisburgess), [threepeakschallenge](https://github.com/threepeakschallenge), [videojedi](https://github.com/videojedi) and [ChristopherJohnDillon](https://github.com/ChristopherJohnDillon).
 
-- **Profiles:** each person gets their own Continue Watching and Saved list. Add, rename and remove profiles in
-  **Settings › Profiles**; switch with the profile button at the end of the top bar ("Who's watching?").
-  Choose what happens on launch: last used, a fixed profile, or ask.
-- **Kids mode:** mark a profile as a kids profile for CBeebies/CBBC only, no programmes with BBC guidance
-  warnings, and no Search, Browse, 4K or Settings. An optional PIN is needed to switch to another profile.
-- **Household sync (optional, self-hosted):** share profiles, Continue Watching, Saved and the kids PIN between
-  your Apple TVs through a server you run — a Home Assistant (AppDaemon) app or a standalone Python/Docker server.
-  Off until you enter a server in **Settings › Household sync**. See [docs/SYNC.md](docs/SYNC.md).
-- **Channels page** (formerly Live) in the style of the official Channels page: a strip of channel wordmarks, an ON NOW
-  card with progress, the channel's featured programmes and themed rows.
-- **Watch live TV from the start:** *Watch from start* and *Live* buttons in the player (live TV now shows the real time of day) (BBC keeps about
-  two hours), and an optional prompt — **Settings › Offer watch from start for live TV** — that asks "from the
-  start or live?" when you open a channel part-way through a programme.
-- **Interface polish:** a clear Play/Resume button, cards that lift on focus, medium-length synopses with an
-  inline More, a 3–4 column episode grid with the newest series first, series tabs, a show-page
-  "Start watching/Resume" button, Continue Watching progress lines, smaller Settings and page controls at the
-  bottom of long lists.
-- **Renew tooling** for free Apple accounts (7-day signing): rebuild and reinstall on all your Apple TVs, or
-  automatically from an always-on Mac. See [tools/renew/README.md](tools/renew/README.md).
-
-Installation is the same as upstream (below). The fork is unofficial, like Beeb itself, and keeps Beeb's
-GPL-3.0-or-later licence; credit for Beeb goes to its original author.
+- **Profiles:** each person gets their own Continue Watching and Saved list. Add, rename and remove profiles in **Settings → Profiles**, and switch with the profile button at the end of the top bar ("Who's watching?"). Choose what happens on launch: last used, a fixed profile, or ask.
+- **Kids mode:** mark a profile as a kids profile for CBeebies and CBBC only, with no programmes carrying BBC guidance warnings and no Search, Browse, 4K or Settings. An optional PIN is needed to switch to another profile.
+- **Household sync (optional, self-hosted):** share profiles, Continue Watching, Saved and the kids PIN between your Apple TVs through a server you run: a Home Assistant (AppDaemon) app or a standalone Python/Docker server. Off until you enter a server in **Settings → Household sync**. See [docs/SYNC.md](docs/SYNC.md).
+- **Channels page:** the Live page is now **Channels**, with a strip of channel wordmarks, an ON NOW card with progress, and each channel's featured programmes and themed rows.
+- **TV guide:** switch the Channels page to **Guide** for a timeline of every channel. Move right for later programmes or left for up to eight hours of earlier ones. Pink plays the channel live, and teal programmes are already on iPlayer to watch on demand.
+- **Watch live TV from the start:** **Watch from start** and **Live** buttons in the live player, the real time of day on live TV, and an optional prompt (**Settings → Offer watch from start for live TV**) when you open a channel part-way through a programme. BBC keeps about two hours.
+- **Choose your Top Shelf:** **Settings → Top Shelf** shows Live TV, Continue Watching, Saved or a Mix above the Apple TV home screen. Select an item to resume an episode or open a programme. An empty list falls back to Live TV.
+- **Faster search:** results are prepared in the background, so typing and dictation no longer stall.
+- **Better programme pages:** a 3–4 column episode grid with the newest series first, series tabs, a **Start watching/Resume** button and medium-length synopses with an inline More. Pressing Up from the first episode row now reaches the series tabs and episode page controls before Saved.
+- **Interface polish:** a clear Play/Resume button, cards that lift on focus, Continue Watching progress lines, and smaller Settings and page controls at the bottom of long lists.
+- **Beeb for Mac (preview):** a macOS 14 app built from the same sources, with a sidebar, programme pages, the channel guide and an AVKit player with Picture in Picture. See [INSTALL-MAC.md](INSTALL-MAC.md).
+- **Renew tooling** for free Apple accounts (7-day signing): rebuild and reinstall on all your Apple TVs, or automatically from an always-on Mac. See [tools/renew/README.md](tools/renew/README.md).
 
 ![Beeb Modern Sidebar homepage](docs/screenshots/modern-sidebar.png)
 
 *The homescreen and Settings captures show the native 0.10.8 interface using cached BBC listings and artwork. The older playback screenshots below are from the [original Reddit announcement](https://www.reddit.com/r/iplayer/comments/1x7kzsi/i_built_beeb_an_unofficial_apple_tv_bbc_player/); current playback quality badges read 4K, FHD, HD or SD.*
 
-**Current release: 0.10.9 hotfix (build 40).** See [the changelog](CHANGELOG.md).
+**Current release: 0.11.0 (build 41).** See [the changelog](CHANGELOG.md).
 
-## Hotfix 0.10.9
+## Changes in 0.10.9
 
 Changes since **0.10.8**:
 
@@ -128,7 +117,9 @@ Changes since **0.10.8**:
 ### Choose your download
 
 - **Public source ZIP:** build and sign through Xcode using the steps below.
-- **Beeb-0.10.9-public-unsigned.ipa:** a prebuilt arm64 tvOS app, intended as a separate GitHub Release asset with a SHA-256 file. **Requires your own signing before installation.** Follow [the IPA signing/install guide](INSTALL-IPA.md). It contains no provisioning profile, developer signature or UHD identity.
+- **Beeb-0.11.0-public-unsigned.ipa:** a prebuilt arm64 tvOS app, intended as a separate GitHub Release asset with a SHA-256 file. **Requires your own signing before installation.** Follow [the IPA signing/install guide](INSTALL-IPA.md). It contains no provisioning profile, developer signature or UHD identity.
+
+The **Mac preview** is a separate download: see [INSTALL-MAC.md](INSTALL-MAC.md).
 
 Download the **[unsigned IPA and matching source ZIP from GitHub Releases](https://github.com/usefulappmaker/Beeb-public/releases/latest)**. The source ZIP intentionally excludes compiled binaries; the IPA is a separate release download.
 

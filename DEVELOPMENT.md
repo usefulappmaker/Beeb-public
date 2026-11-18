@@ -86,6 +86,8 @@ xcodebuild -project BeebMac.xcodeproj -scheme BeebMac -configuration Release \
   -allowProvisioningUpdates build
 ```
 
+`./build-mac.sh` builds the unsigned Release app and packages `build/Beeb-<version>-mac-unsigned.zip` for a GitHub Release.
+
 A development-signed build is required for normal use: Enable BBC UHD stores its identity in the data protection keychain, which macOS only opens to an app signed with its keychain access group. To check that the sources compile without an Apple account, add `CODE_SIGNING_ALLOWED=NO` in place of the signing settings; that build starts, but is not suitable for UHD setup.
 
 ## UHD setup in 0.10.9

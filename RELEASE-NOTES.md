@@ -1,22 +1,27 @@
-# Beeb 0.10.9 hotfix: one-step BBC UHD setup and navigation fixes
+# Beeb 0.11.0: profiles, kids mode, TV guide, Top Shelf choices and Beeb for Mac
 
-Changes since **0.10.8**:
+Changes since **0.10.9**:
 
-- **One-step UHD setup:** open **Settings → Enable BBC UHD** and select **Enable BBC UHD**. Setup runs entirely on Apple TV; no separate computer, downloader, Python installation, helper or copied setup URL is needed.
-- **Check before connecting:** Beeb validates the downloaded configuration and checks for a compatible BBC 4K HLG stream before saving the identity securely in the device-only Keychain. Cancelling or a failed check keeps your existing setup.
-- **Modern Topbar focus fixed:** pressing Down from any Home topbar heading goes directly to **Watch now**, without first jumping through a programme card. Returning Up to navigation is more reliable across pages.
-- **Sidebar shortcuts:** press Left at the left edge of a row or control to open the sidebar. Close it with Right, Back or the current section to return to the same item and scroll position.
-- **Saved is easier to reach:** pressing Up from any episode in the first row reaches the programme's bookmark, including programmes with several series.
-- **More reliable controls:** Browse and homescreen-layout options use native SwiftUI buttons with individual focus targets. Move between choices with Left/Right and click to select.
-- **Cleaner Live page:** removed the explanatory quality line below the heading.
-- **Simpler setup screen:** removed manual helper setup and setup-URL entry. Updated installation and UHD instructions for the new flow.
+- **Profiles:** each person gets their own Continue Watching and Saved list. Switch with the profile button in the top bar and choose what happens on launch.
+- **Kids mode:** CBeebies and CBBC only, no programmes with BBC guidance warnings, no Search, Browse, 4K or Settings, and an optional PIN to leave the kids profile.
+- **Household sync (optional):** share profiles, Continue Watching, Saved and the kids PIN between Apple TVs through a server you run. Off until you enter one in Settings → Household sync.
+- **Channels page:** Live is now Channels, with a channel wordmark strip, an ON NOW card and each channel's featured programmes.
+- **TV guide:** switch to Guide for a timeline of every channel, up to eight hours back. Pink plays live; teal is already on iPlayer.
+- **Watch from start:** Watch from start and Live buttons in the live player, plus an optional "from the start or live?" prompt.
+- **Choose your Top Shelf:** Live TV, Continue Watching, Saved or a Mix, in Settings → Top Shelf.
+- **Faster search:** typing and dictation no longer stall while results update.
+- **Better programme pages:** newest series first, series tabs, Start watching/Resume, and Up from the first episode row now reaches the series tabs.
+- **Beeb for Mac (preview):** a new macOS 14 app built from the same sources.
+
+Thanks to community contributors lewisburgess, threepeakschallenge, videojedi and ChristopherJohnDillon. Full details in [CHANGELOG.md](CHANGELOG.md).
 
 ## Downloads
 
-- **Beeb-0.10.9-public-unsigned.ipa** — Apple TV, tvOS 17+. Sign the app and included Top Shelf extension yourself before installation.
-- **Beeb-0.10.9-public-source.zip** — matching GPL source, Xcode project and instructions.
-- SHA-256 checksums for both downloads.
+- **Beeb-0.11.0-public-unsigned.ipa**: Apple TV, tvOS 17+. Sign the app and included Top Shelf extension yourself before installation. See [INSTALL-IPA.md](INSTALL-IPA.md).
+- **Beeb-0.11.0-mac-unsigned.zip**: Beeb for Mac preview, macOS 14+. See [INSTALL-MAC.md](INSTALL-MAC.md).
+- **Beeb-0.11.0-public-source.zip**: matching GPL source, Xcode projects and instructions.
+- SHA-256 checksums for each download.
 
-Keep the same signing team and bundle identifier when updating. The app uses the normal Beeb icon and public identifiers. The existing **Display 4K UHD category** setting is retained.
+Keep the same signing team and bundle identifier when updating, so profiles, Saved, Continue Watching and UHD setup are retained. The Top Shelf choices need the new App Group in your signing; without it, Top Shelf shows Live TV.
 
-UHD setup no longer requires a computer; signing and installing the app remain separate steps. UHD needs an Apple TV 4K, compatible content/display connection and configuration currently accepted by BBC. Beeb downloads that configuration from the upstream service at setup time; no identity is embedded in these downloads. Service or identity changes can affect availability. Beeb remains independent and unofficial.
+UHD needs an Apple TV 4K, compatible content and display connection, and configuration currently accepted by BBC. Beeb downloads that configuration at setup time; no identity is embedded in these downloads. Beeb remains independent and unofficial.

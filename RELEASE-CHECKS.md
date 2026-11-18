@@ -1,5 +1,14 @@
 # Public edition verification
 
+## Release: 0.11.0 (41)
+
+- Includes community PRs #10 (profiles, kids mode, household sync, Channels page, watch from start), #1 (responsive search), #6 (channel guide), #7 (Mac app preview), #8 (show-page Up navigation) and #9 (Top Shelf source), merged through conflict-resolution PRs #11–#15.
+- App, Top Shelf extension and Mac app are 0.11.0 (41).
+- Combined tvOS Simulator and macOS builds passed with signing disabled. The maintainer installed and tested the Apple TV app on a physical Apple TV and a development-signed Mac app, including BBC UHD setup on Mac, and confirmed both work.
+- Release checker passes (166 source files), including the reviewed sync and renew templates. Release-boundary, setup-helper and unsigned-IPA Python tests pass.
+- New App Group (`group.$(BEEB_APP_BUNDLE_IDENTIFIER)`) for Top Shelf choices. Third-party signers must provision it; otherwise Top Shelf falls back to Live TV.
+- The Mac download is unsigned and not notarised; UHD on Mac needs a development-signed build (INSTALL-MAC.md).
+
 ## Release: 0.10.9 hotfix (40)
 
 - Based on public 0.10.8 and the approved TEST build 39 navigation/setup changes. Standard Beeb icon, public app/extension identifiers, URL scheme and device-only Keychain namespace are retained.
