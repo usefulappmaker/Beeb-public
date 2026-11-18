@@ -20,8 +20,11 @@ enum LiveSubtitles {
             guard let first = segments.first else { return Data() }
             var text = "#EXTM3U\n#EXT-X-VERSION:7\n#EXT-X-TARGETDURATION:\(target)\n#EXT-X-MEDIA-SEQUENCE:\(first.sequence)\n#EXT-X-DISCONTINUITY-SEQUENCE:\(first.discontinuity)\n"
             var previous = first.discontinuity
+            let clock = ISO8601DateFormatter(); clock.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
             for segment in segments {
                 if segment.discontinuity != previous { text += "#EXT-X-DISCONTINUITY\n"; previous = segment.discontinuity }
+                // Same wall-clock times as the video segments: lets the player show and seek by time of day.
+                text += "#EXT-X-PROGRAM-DATE-TIME:" + clock.string(from: Date(timeIntervalSince1970: segment.date)) + "\n"
                 text += String(format: "#EXTINF:%.6f,\n", locale: Locale(identifier: "en_US_POSIX"), segment.duration)
                 text += "\(segment.discontinuity)/\(segment.sequence).vtt\n"
             }
