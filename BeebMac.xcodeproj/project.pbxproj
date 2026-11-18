@@ -12,6 +12,7 @@
 		127CDFE4D328297A8380A1A7 /* LiveDASH.swift in Sources */ = {isa = PBXBuildFile; fileRef = D226EA70F43AD0029FDADB37 /* LiveDASH.swift */; };
 		1678CF6AA31804B0C3611514 /* MacTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C94F98302B76554782D0D4 /* MacTheme.swift */; };
 		28EEE0024013E64D2F15E386 /* LiveSubtitles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13582D4E9274051D8E63BDF1 /* LiveSubtitles.swift */; };
+		1E236D8EC733FD02D3DC139B /* Profiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 237F2BC1C4F9E09BDD2D3834 /* Profiles.swift */; };
 		29709CCB55139122725C491B /* NativeIdentityPackage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C5B10A4917B722894F1A5AB /* NativeIdentityPackage.swift */; };
 		2F59A66C1D819930579338FE /* BBCService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30B97F117BD3133051069B02 /* BBCService.swift */; };
 		383EF6742F29AE5CD4923015 /* Catalogue.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1BAC95FBF279157A5B45A1E /* Catalogue.swift */; };
@@ -48,6 +49,7 @@
 /* Begin PBXFileReference section */
 		0ECF3F70DF888019EF3A2ED1 /* Playback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Playback.swift; sourceTree = "<group>"; };
 		13582D4E9274051D8E63BDF1 /* LiveSubtitles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSubtitles.swift; sourceTree = "<group>"; };
+		237F2BC1C4F9E09BDD2D3834 /* Profiles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Profiles.swift; sourceTree = "<group>"; };
 		1AF21273CC0F485B9615155E /* MacPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacPlayerView.swift; sourceTree = "<group>"; };
 		2017C1591D91CD6CB9715D69 /* UHDIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UHDIdentity.swift; sourceTree = "<group>"; };
 		203E88E624AC899188E10E65 /* MacSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSettingsView.swift; sourceTree = "<group>"; };
@@ -119,6 +121,7 @@
 				69FBAD38FBFD1003801684F5 /* Library.swift */,
 				D226EA70F43AD0029FDADB37 /* LiveDASH.swift */,
 				13582D4E9274051D8E63BDF1 /* LiveSubtitles.swift */,
+				237F2BC1C4F9E09BDD2D3834 /* Profiles.swift */,
 				FAAFE67391E06FB701D32106 /* LocalHLSServer.swift */,
 				3C5B10A4917B722894F1A5AB /* NativeIdentityPackage.swift */,
 				0ECF3F70DF888019EF3A2ED1 /* Playback.swift */,
@@ -248,6 +251,7 @@
 				89691592F4D60AE291454B42 /* LiveChannels.swift in Sources */,
 				127CDFE4D328297A8380A1A7 /* LiveDASH.swift in Sources */,
 				28EEE0024013E64D2F15E386 /* LiveSubtitles.swift in Sources */,
+				1E236D8EC733FD02D3DC139B /* Profiles.swift in Sources */,
 				9FA526A0C610A2526EFE3A1A /* LocalHLSServer.swift in Sources */,
 				A3B73828E011E357C12396E6 /* MacBrowseViews.swift in Sources */,
 				847457F44B003CC208C1D4E2 /* MacGuideView.swift in Sources */,

@@ -21,6 +21,7 @@ targets:
           - "CatalogueSearchViews.swift"
           - "ContinueWatching.swift"
           - "NavigationEdges.swift"
+          - "TopShelfLinks.swift"   # tvOS Top Shelf routes (#9)
           - "UHDValidationView.swift"
           - "Info.plist"
           - "BeebHD.entitlements"
