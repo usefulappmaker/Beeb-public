@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import Foundation
 import Combine
-import UIKit
 
 @MainActor final class Library: ObservableObject {
     @Published var saved: [CatalogueShow] = []
@@ -33,7 +32,7 @@ import UIKit
     }
     private func startSync() {
         let nc = NotificationCenter.default
-        observers.append(nc.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] _ in
+        observers.append(nc.addObserver(forName: AppLifecycle.willEnterForeground, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.scheduleSync(now: true) } })
         observers.append(nc.addObserver(forName: ProfileStore.changed, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.loadLocal(); self?.scheduleSync(now: true) } })
@@ -42,7 +41,7 @@ import UIKit
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 60_000_000_000)
                 guard let self else { return }
-                if UIApplication.shared.applicationState == .active, Date().timeIntervalSince(self.lastSync) > 55 {
+                if AppLifecycle.isActive, Date().timeIntervalSince(self.lastSync) > 55 {
                     self.scheduleSync(now: true)
                 }
             }

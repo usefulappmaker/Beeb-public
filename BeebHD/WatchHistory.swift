@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import Foundation
 import Combine
-import UIKit
 
 struct WatchRecord: Codable, Identifiable {
     let id: String
@@ -151,9 +150,9 @@ enum EpisodeSequence {
     }
     private func startHASync() {
         let nc = NotificationCenter.default
-        observers.append(nc.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] _ in
+        observers.append(nc.addObserver(forName: AppLifecycle.willEnterForeground, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.scheduleHASync(now: true) } })
-        observers.append(nc.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
+        observers.append(nc.addObserver(forName: AppLifecycle.didEnterBackground, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.scheduleHASync(now: true) } })
         observers.append(nc.addObserver(forName: ProfileStore.changed, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.loadLocal(); self?.scheduleHASync(now: true) } })
@@ -163,7 +162,7 @@ enum EpisodeSequence {
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 60_000_000_000)
                 guard let self else { return }
-                if UIApplication.shared.applicationState == .active, Date().timeIntervalSince(self.lastSync) > 55 {
+                if AppLifecycle.isActive, Date().timeIntervalSince(self.lastSync) > 55 {
                     self.scheduleHASync(now: true)
                 }
             }

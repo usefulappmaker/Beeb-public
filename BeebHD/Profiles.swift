@@ -6,8 +6,25 @@
 // Household sync: off until a server URL is entered in Settings. See docs/SYNC.md for the protocol and the
 // reference servers (a Home Assistant AppDaemon app and a standalone Python server).
 import Foundation
-import UIKit
 import Combine
+#if canImport(UIKit)
+import UIKit
+#else
+import AppKit
+#endif
+
+/// App foreground/background signals for sync, on tvOS and macOS.
+enum AppLifecycle {
+    #if canImport(UIKit)
+    static let willEnterForeground = UIApplication.willEnterForegroundNotification
+    static let didEnterBackground = UIApplication.didEnterBackgroundNotification
+    @MainActor static var isActive: Bool { UIApplication.shared.applicationState == .active }
+    #else
+    static let willEnterForeground = NSApplication.willBecomeActiveNotification
+    static let didEnterBackground = NSApplication.didResignActiveNotification
+    @MainActor static var isActive: Bool { NSApplication.shared.isActive }
+    #endif
+}
 
 struct BeebProfile: Codable, Identifiable, Hashable {
     var id: String
@@ -102,7 +119,7 @@ enum BeebSyncClient {
         if !profiles.contains(where: { $0.id == id }) { id = profiles[0].id }
         current = id; d.set(id, forKey: Self.currentKey)
         pickerRequired = startup == "ask" && profiles.count > 1
-        NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] _ in
+        NotificationCenter.default.addObserver(forName: AppLifecycle.willEnterForeground, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.scheduleSync() } }
         scheduleSync()
     }

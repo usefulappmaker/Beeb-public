@@ -29,6 +29,7 @@ import SwiftUI
     }
     func cancel() { operation?.cancel() }
 }
+#if !os(macOS) // tvOS settings panel; the Mac panel lives in Mac/.
 struct UHDSetupView: View {
     @StateObject private var state = UHDSetupState()
     var body: some View {
@@ -55,3 +56,4 @@ struct UHDSetupView: View {
             .onDisappear { state.cancel() }
     }
 }
+#endif // !os(macOS)

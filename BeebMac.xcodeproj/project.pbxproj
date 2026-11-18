@@ -1,0 +1,479 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		02609BC4E1D026ADE5BB07A2 /* Library.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69FBAD38FBFD1003801684F5 /* Library.swift */; };
+		0FAD3E6ABFD57D0A61837696 /* UHDPlaybackAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA696464FDE446F2D38E4445 /* UHDPlaybackAccess.swift */; };
+		127CDFE4D328297A8380A1A7 /* LiveDASH.swift in Sources */ = {isa = PBXBuildFile; fileRef = D226EA70F43AD0029FDADB37 /* LiveDASH.swift */; };
+		1678CF6AA31804B0C3611514 /* MacTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C94F98302B76554782D0D4 /* MacTheme.swift */; };
+		28EEE0024013E64D2F15E386 /* LiveSubtitles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13582D4E9274051D8E63BDF1 /* LiveSubtitles.swift */; };
+		1E236D8EC733FD02D3DC139B /* Profiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 237F2BC1C4F9E09BDD2D3834 /* Profiles.swift */; };
+		29709CCB55139122725C491B /* NativeIdentityPackage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C5B10A4917B722894F1A5AB /* NativeIdentityPackage.swift */; };
+		2F59A66C1D819930579338FE /* BBCService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30B97F117BD3133051069B02 /* BBCService.swift */; };
+		383EF6742F29AE5CD4923015 /* Catalogue.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1BAC95FBF279157A5B45A1E /* Catalogue.swift */; };
+		47D2EA895133BFD0B380DB21 /* CatalogueIndexStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC294FA3C2D98E162522A65D /* CatalogueIndexStore.swift */; };
+		57BEF7C35D58B296405F9421 /* TwinVineDirectSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D409E09A98BD80A8077B20C /* TwinVineDirectSetup.swift */; };
+		648AA4CEB9EA89DFBAD8AC00 /* CatalogueSeed.plist in Resources */ = {isa = PBXBuildFile; fileRef = 6018B5EFDE8E095FD55BBFA9 /* CatalogueSeed.plist */; };
+		72666C370AE491C1DF310654 /* MacSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 203E88E624AC899188E10E65 /* MacSettingsView.swift */; };
+		80C210D7AD3B87BCDC0558A4 /* ChannelGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A54EF7A4F07A4B5E19959AA /* ChannelGuide.swift */; };
+		847457F44B003CC208C1D4E2 /* MacGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC6C1A03F2D6B45177EBE2CA /* MacGuideView.swift */; };
+		867F0B607F1FF525D24866BF /* DASHManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1796D19F930E40BB71E2543 /* DASHManifest.swift */; };
+		89691592F4D60AE291454B42 /* LiveChannels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E153DFBAA17F991644359CBA /* LiveChannels.swift */; };
+		9213DE34A13176114C0B1B15 /* TwinVineUHDProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = F12B4B5CC9C072F00D4630AE /* TwinVineUHDProbe.swift */; };
+		971B619D325318F77F0BD5DA /* PlaybackExtras.swift in Sources */ = {isa = PBXBuildFile; fileRef = 618B48706603BFC72337FC92 /* PlaybackExtras.swift */; };
+		9DEBB31E8847946935282FC1 /* MacHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B5CF310B3F841EFA951549F /* MacHomeView.swift */; };
+		9FA526A0C610A2526EFE3A1A /* LocalHLSServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAAFE67391E06FB701D32106 /* LocalHLSServer.swift */; };
+		A3B73828E011E357C12396E6 /* MacBrowseViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10293C8984319084B4C66D0 /* MacBrowseViews.swift */; };
+		A92D1B65B753D7A3F488D5B8 /* BeebMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6A72618F6C7B4AA30E3155D /* BeebMacApp.swift */; };
+		AD9E29448260B0B62D493C07 /* Playback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ECF3F70DF888019EF3A2ED1 /* Playback.swift */; };
+		AE73032D44CCE42AAEB9F37F /* PlaybackPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5D396C81FC0EDC5CD05C31A /* PlaybackPolicy.swift */; };
+		B5430B8F52771240B2A3D244 /* UHDService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA1D84E6100E9BAFD1AFEF4A /* UHDService.swift */; };
+		B59BE6779FD04E130ECD0F15 /* MacPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AF21273CC0F485B9615155E /* MacPlayerView.swift */; };
+		BB20BFB8774CB6978AB3785D /* Discovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D21DE31BD2947FC8E17E10F /* Discovery.swift */; };
+		BCDD5F4FA78DB0FE228CD5F9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A0824B05044D5103F6030927 /* Assets.xcassets */; };
+		C5B7FC293B22CA817C13EF12 /* WatchHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E9D3F5334E3D9AC304AF344 /* WatchHistory.swift */; };
+		D283224CE8C471E45121DE8F /* CatalogueIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BA5A8F8620FB4B9F54AAE68 /* CatalogueIndex.swift */; };
+		DD143762713C354A91EDFFB3 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 57348DCD5A5876B1384A95EB /* Assets.xcassets */; };
+		DF6F0E7E0ECD2AFCB6CABBF4 /* MacShowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4275530080D43E444B40B0D7 /* MacShowView.swift */; };
+		E6B9EF9BF008E8C948654FCA /* CatalogueStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4698B95CF6FD5DD0F85F7447 /* CatalogueStore.swift */; };
+		E7F1A5AEE42026EE409C1320 /* FMP4Normalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9968FD2D8547151AF780169D /* FMP4Normalizer.swift */; };
+		F89955643E5A28104477411F /* UHDSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3376E193216D06E83CE13DE9 /* UHDSetupView.swift */; };
+		FDD477AE9E23AEC628160387 /* UHDIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2017C1591D91CD6CB9715D69 /* UHDIdentity.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0ECF3F70DF888019EF3A2ED1 /* Playback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Playback.swift; sourceTree = "<group>"; };
+		13582D4E9274051D8E63BDF1 /* LiveSubtitles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSubtitles.swift; sourceTree = "<group>"; };
+		237F2BC1C4F9E09BDD2D3834 /* Profiles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Profiles.swift; sourceTree = "<group>"; };
+		1AF21273CC0F485B9615155E /* MacPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacPlayerView.swift; sourceTree = "<group>"; };
+		2017C1591D91CD6CB9715D69 /* UHDIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UHDIdentity.swift; sourceTree = "<group>"; };
+		203E88E624AC899188E10E65 /* MacSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSettingsView.swift; sourceTree = "<group>"; };
+		2D21DE31BD2947FC8E17E10F /* Discovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Discovery.swift; sourceTree = "<group>"; };
+		2D409E09A98BD80A8077B20C /* TwinVineDirectSetup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TwinVineDirectSetup.swift; sourceTree = "<group>"; };
+		30B97F117BD3133051069B02 /* BBCService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BBCService.swift; sourceTree = "<group>"; };
+		3376E193216D06E83CE13DE9 /* UHDSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UHDSetupView.swift; sourceTree = "<group>"; };
+		3A48FA130BC2F59CE2700D69 /* BeebMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BeebMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3BA5A8F8620FB4B9F54AAE68 /* CatalogueIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogueIndex.swift; sourceTree = "<group>"; };
+		3C5B10A4917B722894F1A5AB /* NativeIdentityPackage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeIdentityPackage.swift; sourceTree = "<group>"; };
+		4275530080D43E444B40B0D7 /* MacShowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacShowView.swift; sourceTree = "<group>"; };
+		4698B95CF6FD5DD0F85F7447 /* CatalogueStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogueStore.swift; sourceTree = "<group>"; };
+		4A54EF7A4F07A4B5E19959AA /* ChannelGuide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelGuide.swift; sourceTree = "<group>"; };
+		57348DCD5A5876B1384A95EB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		5B5CF310B3F841EFA951549F /* MacHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacHomeView.swift; sourceTree = "<group>"; };
+		6018B5EFDE8E095FD55BBFA9 /* CatalogueSeed.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = CatalogueSeed.plist; sourceTree = "<group>"; };
+		618B48706603BFC72337FC92 /* PlaybackExtras.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackExtras.swift; sourceTree = "<group>"; };
+		69FBAD38FBFD1003801684F5 /* Library.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Library.swift; sourceTree = "<group>"; };
+		6E9D3F5334E3D9AC304AF344 /* WatchHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchHistory.swift; sourceTree = "<group>"; };
+		9968FD2D8547151AF780169D /* FMP4Normalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FMP4Normalizer.swift; sourceTree = "<group>"; };
+		A0824B05044D5103F6030927 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A6A72618F6C7B4AA30E3155D /* BeebMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeebMacApp.swift; sourceTree = "<group>"; };
+		B1BAC95FBF279157A5B45A1E /* Catalogue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Catalogue.swift; sourceTree = "<group>"; };
+		C5D396C81FC0EDC5CD05C31A /* PlaybackPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackPolicy.swift; sourceTree = "<group>"; };
+		C8C94F98302B76554782D0D4 /* MacTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacTheme.swift; sourceTree = "<group>"; };
+		CC294FA3C2D98E162522A65D /* CatalogueIndexStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogueIndexStore.swift; sourceTree = "<group>"; };
+		D226EA70F43AD0029FDADB37 /* LiveDASH.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveDASH.swift; sourceTree = "<group>"; };
+		DA1D84E6100E9BAFD1AFEF4A /* UHDService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UHDService.swift; sourceTree = "<group>"; };
+		E153DFBAA17F991644359CBA /* LiveChannels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveChannels.swift; sourceTree = "<group>"; };
+		E1796D19F930E40BB71E2543 /* DASHManifest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DASHManifest.swift; sourceTree = "<group>"; };
+		EA696464FDE446F2D38E4445 /* UHDPlaybackAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UHDPlaybackAccess.swift; sourceTree = "<group>"; };
+		EC6C1A03F2D6B45177EBE2CA /* MacGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacGuideView.swift; sourceTree = "<group>"; };
+		F10293C8984319084B4C66D0 /* MacBrowseViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacBrowseViews.swift; sourceTree = "<group>"; };
+		F12B4B5CC9C072F00D4630AE /* TwinVineUHDProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TwinVineUHDProbe.swift; sourceTree = "<group>"; };
+		FAAFE67391E06FB701D32106 /* LocalHLSServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalHLSServer.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		37578146B83808B5EAD208AC /* Mac */ = {
+			isa = PBXGroup;
+			children = (
+				57348DCD5A5876B1384A95EB /* Assets.xcassets */,
+				A6A72618F6C7B4AA30E3155D /* BeebMacApp.swift */,
+				F10293C8984319084B4C66D0 /* MacBrowseViews.swift */,
+				EC6C1A03F2D6B45177EBE2CA /* MacGuideView.swift */,
+				5B5CF310B3F841EFA951549F /* MacHomeView.swift */,
+				1AF21273CC0F485B9615155E /* MacPlayerView.swift */,
+				203E88E624AC899188E10E65 /* MacSettingsView.swift */,
+				4275530080D43E444B40B0D7 /* MacShowView.swift */,
+				C8C94F98302B76554782D0D4 /* MacTheme.swift */,
+			);
+			path = Mac;
+			sourceTree = "<group>";
+		};
+		4D4463D1CB1625ED994F4A9D /* BeebHD */ = {
+			isa = PBXGroup;
+			children = (
+				A0824B05044D5103F6030927 /* Assets.xcassets */,
+				30B97F117BD3133051069B02 /* BBCService.swift */,
+				B1BAC95FBF279157A5B45A1E /* Catalogue.swift */,
+				3BA5A8F8620FB4B9F54AAE68 /* CatalogueIndex.swift */,
+				CC294FA3C2D98E162522A65D /* CatalogueIndexStore.swift */,
+				6018B5EFDE8E095FD55BBFA9 /* CatalogueSeed.plist */,
+				4698B95CF6FD5DD0F85F7447 /* CatalogueStore.swift */,
+				4A54EF7A4F07A4B5E19959AA /* ChannelGuide.swift */,
+				E1796D19F930E40BB71E2543 /* DASHManifest.swift */,
+				2D21DE31BD2947FC8E17E10F /* Discovery.swift */,
+				9968FD2D8547151AF780169D /* FMP4Normalizer.swift */,
+				69FBAD38FBFD1003801684F5 /* Library.swift */,
+				D226EA70F43AD0029FDADB37 /* LiveDASH.swift */,
+				13582D4E9274051D8E63BDF1 /* LiveSubtitles.swift */,
+				237F2BC1C4F9E09BDD2D3834 /* Profiles.swift */,
+				FAAFE67391E06FB701D32106 /* LocalHLSServer.swift */,
+				3C5B10A4917B722894F1A5AB /* NativeIdentityPackage.swift */,
+				0ECF3F70DF888019EF3A2ED1 /* Playback.swift */,
+				618B48706603BFC72337FC92 /* PlaybackExtras.swift */,
+				C5D396C81FC0EDC5CD05C31A /* PlaybackPolicy.swift */,
+				2D409E09A98BD80A8077B20C /* TwinVineDirectSetup.swift */,
+				F12B4B5CC9C072F00D4630AE /* TwinVineUHDProbe.swift */,
+				2017C1591D91CD6CB9715D69 /* UHDIdentity.swift */,
+				EA696464FDE446F2D38E4445 /* UHDPlaybackAccess.swift */,
+				DA1D84E6100E9BAFD1AFEF4A /* UHDService.swift */,
+				3376E193216D06E83CE13DE9 /* UHDSetupView.swift */,
+				6E9D3F5334E3D9AC304AF344 /* WatchHistory.swift */,
+			);
+			path = BeebHD;
+			sourceTree = "<group>";
+		};
+		77C1D3937E019576696BA5B3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				3A48FA130BC2F59CE2700D69 /* BeebMac.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		E1433649C0A9273AFD7498C7 = {
+			isa = PBXGroup;
+			children = (
+				4D4463D1CB1625ED994F4A9D /* BeebHD */,
+				37578146B83808B5EAD208AC /* Mac */,
+				E84511FE00CA5438A8A8BA4C /* Shared */,
+				77C1D3937E019576696BA5B3 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		E84511FE00CA5438A8A8BA4C /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				E153DFBAA17F991644359CBA /* LiveChannels.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		8985EFC0D3C9F5060D2070D9 /* BeebMac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FC3AAC650547B046D4C3883F /* Build configuration list for PBXNativeTarget "BeebMac" */;
+			buildPhases = (
+				0E81C967251A048C4A482952 /* Sources */,
+				C0B900ED5BACD39E84D58F84 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = BeebMac;
+			packageProductDependencies = (
+			);
+			productName = BeebMac;
+			productReference = 3A48FA130BC2F59CE2700D69 /* BeebMac.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		650C9B313481DED02A689CA7 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					8985EFC0D3C9F5060D2070D9 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 9BCD029602F5F9FD711F132E /* Build configuration list for PBXProject "BeebMac" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = E1433649C0A9273AFD7498C7;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				8985EFC0D3C9F5060D2070D9 /* BeebMac */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		C0B900ED5BACD39E84D58F84 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DD143762713C354A91EDFFB3 /* Assets.xcassets in Resources */,
+				BCDD5F4FA78DB0FE228CD5F9 /* Assets.xcassets in Resources */,
+				648AA4CEB9EA89DFBAD8AC00 /* CatalogueSeed.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		0E81C967251A048C4A482952 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2F59A66C1D819930579338FE /* BBCService.swift in Sources */,
+				A92D1B65B753D7A3F488D5B8 /* BeebMacApp.swift in Sources */,
+				383EF6742F29AE5CD4923015 /* Catalogue.swift in Sources */,
+				D283224CE8C471E45121DE8F /* CatalogueIndex.swift in Sources */,
+				47D2EA895133BFD0B380DB21 /* CatalogueIndexStore.swift in Sources */,
+				E6B9EF9BF008E8C948654FCA /* CatalogueStore.swift in Sources */,
+				80C210D7AD3B87BCDC0558A4 /* ChannelGuide.swift in Sources */,
+				867F0B607F1FF525D24866BF /* DASHManifest.swift in Sources */,
+				BB20BFB8774CB6978AB3785D /* Discovery.swift in Sources */,
+				E7F1A5AEE42026EE409C1320 /* FMP4Normalizer.swift in Sources */,
+				02609BC4E1D026ADE5BB07A2 /* Library.swift in Sources */,
+				89691592F4D60AE291454B42 /* LiveChannels.swift in Sources */,
+				127CDFE4D328297A8380A1A7 /* LiveDASH.swift in Sources */,
+				28EEE0024013E64D2F15E386 /* LiveSubtitles.swift in Sources */,
+				1E236D8EC733FD02D3DC139B /* Profiles.swift in Sources */,
+				9FA526A0C610A2526EFE3A1A /* LocalHLSServer.swift in Sources */,
+				A3B73828E011E357C12396E6 /* MacBrowseViews.swift in Sources */,
+				847457F44B003CC208C1D4E2 /* MacGuideView.swift in Sources */,
+				9DEBB31E8847946935282FC1 /* MacHomeView.swift in Sources */,
+				B59BE6779FD04E130ECD0F15 /* MacPlayerView.swift in Sources */,
+				72666C370AE491C1DF310654 /* MacSettingsView.swift in Sources */,
+				DF6F0E7E0ECD2AFCB6CABBF4 /* MacShowView.swift in Sources */,
+				1678CF6AA31804B0C3611514 /* MacTheme.swift in Sources */,
+				29709CCB55139122725C491B /* NativeIdentityPackage.swift in Sources */,
+				AD9E29448260B0B62D493C07 /* Playback.swift in Sources */,
+				971B619D325318F77F0BD5DA /* PlaybackExtras.swift in Sources */,
+				AE73032D44CCE42AAEB9F37F /* PlaybackPolicy.swift in Sources */,
+				57BEF7C35D58B296405F9421 /* TwinVineDirectSetup.swift in Sources */,
+				9213DE34A13176114C0B1B15 /* TwinVineUHDProbe.swift in Sources */,
+				FDD477AE9E23AEC628160387 /* UHDIdentity.swift in Sources */,
+				0FAD3E6ABFD57D0A61837696 /* UHDPlaybackAccess.swift in Sources */,
+				B5430B8F52771240B2A3D244 /* UHDService.swift in Sources */,
+				F89955643E5A28104477411F /* UHDSetupView.swift in Sources */,
+				C5B7FC293B22CA817C13EF12 /* WatchHistory.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		15DF5FC27B6E471EFE8F19C0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		69DC82FFFB64671C112354A4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		87EBFDE9F2C66B1FEAC23CEE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = MacAppIcon;
+				BEEB_APP_BUNDLE_IDENTIFIER = org.beebplayer.BeebMac;
+				CODE_SIGN_ENTITLEMENTS = BeebHD/BeebHD.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 40;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BeebHD/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Beeb;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "GPL-3.0-or-later. Not produced or endorsed by the BBC.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.10.9;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(BEEB_APP_BUNDLE_IDENTIFIER)";
+				PRODUCT_NAME = Beeb;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		BF9127906165C92DAA3ADE89 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = MacAppIcon;
+				BEEB_APP_BUNDLE_IDENTIFIER = org.beebplayer.BeebMac;
+				CODE_SIGN_ENTITLEMENTS = BeebHD/BeebHD.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 40;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BeebHD/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Beeb;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "GPL-3.0-or-later. Not produced or endorsed by the BBC.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.10.9;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(BEEB_APP_BUNDLE_IDENTIFIER)";
+				PRODUCT_NAME = Beeb;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		9BCD029602F5F9FD711F132E /* Build configuration list for PBXProject "BeebMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				69DC82FFFB64671C112354A4 /* Debug */,
+				15DF5FC27B6E471EFE8F19C0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		FC3AAC650547B046D4C3883F /* Build configuration list for PBXNativeTarget "BeebMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				87EBFDE9F2C66B1FEAC23CEE /* Debug */,
+				BF9127906165C92DAA3ADE89 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 650C9B313481DED02A689CA7 /* Project object */;
+}
