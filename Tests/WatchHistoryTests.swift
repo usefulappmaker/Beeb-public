@@ -52,7 +52,7 @@ import Foundation
         precondition(WatchHistory.isComplete(position: 95, duration: 100), "Completion scales to short programmes")
         history.remove(show.id)
         precondition(WatchHistory(defaults: defaults).records.isEmpty, "Removing a programme persists")
-        defaults.set(Data("bad JSON".utf8), forKey: "continueWatching-v1")
+        defaults.set(Data("bad JSON".utf8), forKey: "continueWatching-v1-" + ProfileStore.currentID)   // per-profile key since 0.11.0
         let corrupt = WatchHistory(defaults: defaults)
         precondition(corrupt.records.isEmpty && corrupt.warning != nil, "Corrupt history does not prevent launch")
         corrupt.update(episode: one, show: show, next: two, position: 15, duration: 3600)

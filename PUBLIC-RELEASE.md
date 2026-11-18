@@ -10,6 +10,8 @@ This tree is a separate source distribution with no selected Apple signing team 
 4. Preserve LICENSE.txt and NOTICE.md. They name upstream contributors, not the original private installer.
 5. For a source release, run `python3 scripts/make-public-archive.py`. Upload the resulting source ZIP from `dist/` after reviewing it. This excludes local signing settings, builds, environments and Git metadata. It is not a signed installer.
 
+Build release binaries from a clone in a temporary folder such as `/tmp`, not your home folder: Xcode records the build folder in the app executable, so a build under `/Users/<you>/` contains your account name. `check-unsigned-ipa.py` and `build-mac.sh` reject such builds.
+
 An audited unsigned IPA may be attached as a **separate Release asset**, alongside its SHA-256 file and matching GPL source ZIP. Keep `*.ipa` excluded from source commits. Run `python3 scripts/check-unsigned-ipa.py /path/to/the/unsigned.ipa` and audit the binary for known private identifiers before upload. Include INSTALL-IPA.md in the release instructions. Never substitute a locally signed personal IPA for the unsigned asset.
 
 Set Git's author information yourself before your first commit. GitHub explains [commit-email privacy](https://docs.github.com/en/account-and-profile/how-tos/email-preferences/setting-your-commit-email-address); changing it later does not rewrite old commits.
