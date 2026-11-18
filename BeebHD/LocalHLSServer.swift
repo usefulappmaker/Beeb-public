@@ -87,7 +87,10 @@ final class LocalHLSServer: @unchecked Sendable {
                             self.send(connection, status: "502 Bad Gateway", data: Data("BBC media request failed.".utf8), type: "text/plain"); return
                         }
                         do {
-                            let body = key.hasSuffix(".m4s") ? try FMP4Normalizer.normalize(data) : data
+                            let normalized = key.hasSuffix(".m4s") ? try FMP4Normalizer.normalize(data) : data
+                            // Apple's players take the dynamic range from the video's own parameter sets, which BBC marks as
+                            // SDR-compatible. Both callers have already verified the stream as HLG.
+                            let body = key.hasPrefix("/video/") && key.hasSuffix(".m4s") ? HLGSignalling.promote(normalized) : normalized
                             self.send(connection, data: body, type: "video/mp4", head: method == "HEAD", range: range)
                         } catch {
                             self.send(connection, status: "502 Bad Gateway", data: Data("Unsupported UHD fragment.".utf8), type: "text/plain")
