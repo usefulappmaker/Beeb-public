@@ -128,3 +128,57 @@ struct UHDPageEntry: Equatable {
     let title: String
     let singleEpisode: Bool
 }
+
+/// Immutable normalized catalogue, prepared once per snapshot off the UI thread.
+struct PreparedCatalogueSearch {
+    private struct Entry {
+        let show: CatalogueShow
+        let title: String
+        let text: String
+    }
+    private let entries: [Entry]
+    static func normalize(_ value: String) -> String {
+        value.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+            .split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+    }
+    init(_ snapshot: CatalogueIndexSnapshot) {
+        let known = Dictionary(snapshot.uhd.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        entries = CatalogueIndexSnapshot.sorted(snapshot.catalogue).map { show in
+            var show = show
+            if let uhd = known[show.id] { show.uhdListed = true; show.uhdEpisodeCount = uhd.uhdEpisodeCount }
+            let title = Self.normalize(show.title)
+            return Entry(show: show, title: title, text: title + " " + Self.normalize(show.summary))
+        }
+    }
+    func search(_ query: String) -> [CatalogueShow] {
+        let needle = Self.normalize(query)
+        guard !needle.isEmpty else { return [] }
+        let tokens = needle.split(separator: " ")
+        var ranked = [[CatalogueShow]](repeating: [], count: 4)
+        for entry in entries where tokens.allSatisfy({ entry.text.contains($0) }) {
+            let rank = entry.title == needle ? 0 : entry.title.hasPrefix(needle) ? 1 : entry.title.contains(needle) ? 2 : 3
+            ranked[rank].append(entry.show)
+        }
+        return ranked.flatMap { $0 }
+    }
+}
+
+actor CatalogueSearchWorker {
+    private var revision: Int?
+    private var prepared: PreparedCatalogueSearch?
+    private var cache: [String: [CatalogueShow]] = [:]
+    func search(_ query: String, snapshot: CatalogueIndexSnapshot, revision: Int) throws -> [CatalogueShow] {
+        try Task.checkCancellation()
+        if self.revision != revision {
+            prepared = PreparedCatalogueSearch(snapshot); self.revision = revision; cache = [:]
+        }
+        try Task.checkCancellation()
+        let key = PreparedCatalogueSearch.normalize(query)
+        if let result = cache[key] { return result }
+        let result = prepared?.search(query) ?? []
+        try Task.checkCancellation()
+        if cache.count >= 32 { cache.removeAll(keepingCapacity: true) }
+        cache[key] = result
+        return result
+    }
+}
