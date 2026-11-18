@@ -16,6 +16,10 @@ xcodebuild -project BeebMac.xcodeproj -scheme BeebMac -configuration Release \
     CODE_SIGNING_ALLOWED=NO build
 app="$build_dir/MacDerivedData/Build/Products/Release/Beeb.app"
 zip="$build_dir/Beeb-$version-mac-unsigned.zip"
+if grep -aqE '/(Users|home)/[A-Za-z0-9_.-]+/' "$app/Contents/MacOS/Beeb"; then
+    echo 'The app contains a personal build path. Build releases from a temporary folder such as /tmp (see PUBLIC-RELEASE.md).' >&2
+    exit 1
+fi
 rm -f "$zip"
 COPYFILE_DISABLE=1 /usr/bin/ditto -c -k --norsrc --keepParent "$app" "$zip"
 echo "Unsigned Mac preview: $zip"
