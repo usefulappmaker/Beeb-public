@@ -31,6 +31,7 @@ struct HomeView: View {
     @StateObject private var homeState = HomeState()
     @StateObject private var navigationMemory = NavigationFocusMemory()
     @State private var liveLaunch: LiveLaunch?
+    @State private var shelfLink: TopShelfLinkRequest?
     @FocusState private var focusedTab: BeebTab?
     @FocusState private var menuIconFocused: Bool
     @State private var sidebarOpen = false
@@ -225,7 +226,10 @@ struct HomeView: View {
             }).overlay(alignment: .topLeading) {
                 if usesSidebar && sidebarOpen { sidebar.transition(.move(edge: .leading).combined(with: .opacity)) }
             }
-        }.id(liveLaunch?.id).environmentObject(history).tint(.pink)
+        }.id("\(liveLaunch?.id.uuidString ?? "")-\(shelfLink?.id.uuidString ?? "")").environmentObject(history).tint(.pink)
+        .overlay { TopShelfLinkHost(request: shelfLink, catalogue: catalogue, library: library).environmentObject(history).tint(.pink) }
+        .onReceive(library.$saved) { TopShelfPublisher.publish(saved: $0, records: history.records) }
+        .onReceive(history.$records) { TopShelfPublisher.publish(saved: library.saved, records: $0) }
         .task(id: iconFocusRequest) {
             guard iconFocusRequest > 0 else { return }
             do { try await Task.sleep(nanoseconds: 150_000_000) } catch { return }
@@ -249,6 +253,11 @@ struct HomeView: View {
         .onChange(of: modernNavigation) { _, _ in sidebarOpen = false; focusedTab = nil; menuIconFocused = false }
         .onOpenURL { url in
             sidebarOpen = false
+            if let link = BeebLink.parse(url) {
+                NotificationCenter.default.post(name: .beebLaunchLive, object: nil)
+                shelfLink = TopShelfLinkRequest(link: link)
+                return
+            }
             guard let id = LiveChannelLink.channelID(from: url) else { return }
             if tab != .live { NotificationCenter.default.post(name: .beebLaunchLive, object: nil) }
             liveLaunch = LiveLaunch(channelID: id)
@@ -1041,6 +1050,7 @@ struct SettingsView: View {
     @AppStorage("modernNavigation") private var modernNavigation = "Sidebar"
     @AppStorage("bbcOneRegion") private var bbcOne = "bbc_one_london"
     @AppStorage("bbcTwoRegion") private var bbcTwo = "bbc_two_england"
+    @AppStorage(TopShelfShared.sourceKey, store: TopShelfShared.defaults) private var topShelfSource = TopShelfSource.fallback.rawValue
     @ObservedObject private var profileStore = ProfileStore.shared
     @AppStorage(BeebSyncSettings.urlKey) private var syncURL = ""
     @AppStorage(BeebSyncSettings.secretKey) private var syncSecret = ""
@@ -1129,6 +1139,17 @@ struct SettingsView: View {
                     }
                 }.padding(32).frame(maxWidth: .infinity, alignment: .leading)
                     .background(.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 24))
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Top Shelf").font(.system(size: 32, weight: .bold))
+                    Text("What appears above the Home Screen when Beeb is in your top row.").font(.system(size: 22)).foregroundStyle(.secondary)
+                    BeebNavigationSegments(title: "Top Shelf", options: TopShelfSource.allCases.map(\.rawValue), selection: $topShelfSource)
+                        .frame(width: 1200).accessibilityIdentifier("TopShelfPicker")
+                    Text("Mix shows Continue Watching, Saved and Live TV together. If the list you choose is empty, Live TV is shown instead.")
+                        .font(.system(size: 22)).foregroundStyle(.secondary)
+                }.padding(32).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 24))
+                    .focusSection()
+                    .onChange(of: topShelfSource) { _, _ in TVTopShelfContentProvider.topShelfContentDidChange() }
                 Toggle("Offer watch from start for live TV", isOn: $offerLiveFromStart)
                 Text("When on, opening a channel part-way through a programme asks whether to watch from the start or live. When off, live TV always starts live. You can also jump back with Watch from start in the player.")
                     .font(.system(size: 22)).foregroundStyle(.secondary)
