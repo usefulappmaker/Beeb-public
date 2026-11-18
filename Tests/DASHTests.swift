@@ -45,7 +45,8 @@ import Foundation
         precondition(parsed.mediaResources["/video/0.m4s"] == parsed.video.segments[0].url, "Bridge allowlist preserves signed CDN URLs")
         server.stop()
         try await fragmentRegressionTests()
-        print("PASS: DASH templates/timelines, audio selection, HLG detection, protection checks, and loopback HLS/ranges and padded-fragment regression")
+        hlgSignallingTests()
+        print("PASS: DASH templates/timelines, audio selection, HLG detection, protection checks, loopback HLS/ranges, padded-fragment regression and HLG parameter-set signalling")
     }
 }
 
@@ -54,14 +55,14 @@ private func be(_ value: Int, _ count: Int = 4) -> Data {
     Data((0..<count).map { UInt8(truncatingIfNeeded: value >> ((count - 1 - $0) * 8)) })
 }
 private func box(_ type: String, _ payload: Data) -> Data { be(payload.count + 8) + Data(type.utf8) + payload }
-private func fragment(padding: Int, extended: Bool = false, toEnd: Bool = false) -> Data {
+private func fragment(padding: Int, extended: Bool = false, toEnd: Bool = false, sample: Data = Data([0x21,0x1a,0x94,0x6d])) -> Data {
     let tfhd = box("tfhd", be(0x020000) + be(1))
     func moof(_ offset: Int) -> Data {
-        box("moof", box("mfhd", be(0) + be(18)) + box("traf", tfhd + box("tfdt", be(0x01000000) + be(65280, 8)) + box("trun", be(0x00000201) + be(1) + be(offset) + be(4))))
+        box("moof", box("mfhd", be(0) + be(18)) + box("traf", tfhd + box("tfdt", be(0x01000000) + be(65280, 8)) + box("trun", be(0x00000201) + be(1) + be(offset) + be(sample.count))))
     }
     let header = extended ? 16 : 8
     let m = moof(moof(0).count + header + padding)
-    let payload = Data(repeating: 0xbc, count: padding) + Data([0x21,0x1a,0x94,0x6d])
+    let payload = Data(repeating: 0xbc, count: padding) + sample
     let media = extended ? be(1) + Data("mdat".utf8) + be(payload.count + 16, 8) + payload : be(toEnd ? 0 : payload.count + 8) + Data("mdat".utf8) + payload
     return m + media
 }
@@ -69,7 +70,8 @@ private final class FragmentProtocol: URLProtocol, @unchecked Sendable {
     override class func canInit(with request: URLRequest) -> Bool { request.url?.host == "cdn.example" }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
-        let data = fragment(padding: 2)
+        // One remote fragment carries a real parameter set; the rest carry opaque sample bytes.
+        let data = request.url?.lastPathComponent == "19.m4s" ? fragment(padding: 2, sample: units(bytes(compatibleParameterSet))) : fragment(padding: 2)
         let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: ["Content-Length": String(data.count)])!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
         client?.urlProtocol(self, didLoad: data); client?.urlProtocolDidFinishLoading(self)
@@ -92,12 +94,60 @@ private func fragmentRegressionTests() async throws {
     }
     let configuration = URLSessionConfiguration.ephemeral; configuration.protocolClasses = [FragmentProtocol.self]
     let server = LocalHLSServer(configuration: configuration)
-    let master = try await server.start(playlists: [:], media: ["/video/18.m4s": URL(string: "https://cdn.example/video/18.m4s?token=test")!])
+    let master = try await server.start(playlists: [:], media: ["/video/18.m4s": URL(string: "https://cdn.example/video/18.m4s?token=test")!,
+                                                                "/video/19.m4s": URL(string: "https://cdn.example/video/19.m4s?token=test")!,
+                                                                "/audio/19.m4s": URL(string: "https://cdn.example/audio/19.m4s?token=test")!])
     let url = master.deletingLastPathComponent().appendingPathComponent("video/18.m4s")
     let (normalized, response) = try await URLSession.shared.data(from: url)
     precondition((response as? HTTPURLResponse)?.statusCode == 200 && normalized == fragment(padding: 0), "Real bridge normalizes remote fragments")
     var request = URLRequest(url: url); request.setValue("bytes=0-15", forHTTPHeaderField: "Range")
     let (partial, partialResponse) = try await URLSession.shared.data(for: request)
     precondition((partialResponse as? HTTPURLResponse)?.statusCode == 206 && partial == normalized.prefix(16), "Ranges apply after normalization")
+    let promotedSet = bytes(compatibleParameterSet.replacingOccurrences(of: "848704", with: "848904"))
+    let (video, _) = try await URLSession.shared.data(from: master.deletingLastPathComponent().appendingPathComponent("video/19.m4s"))
+    precondition(video == fragment(padding: 0, sample: units(promotedSet)), "Real bridge declares HLG in served video fragments, after normalization")
+    let (audio, _) = try await URLSession.shared.data(from: master.deletingLastPathComponent().appendingPathComponent("audio/19.m4s"))
+    precondition(audio == fragment(padding: 0, sample: units(bytes(compatibleParameterSet))), "Only video fragments are rewritten")
     server.stop()
+}
+/// Length-prefixed units as they sit in a fragment: access unit delimiter, parameter set, then a slice.
+private func units(_ parameterSet: [UInt8]) -> Data {
+    func unit(_ payload: [UInt8]) -> Data { be(payload.count) + Data(payload) }
+    return unit([0x46, 0x01, 0x50]) + unit(parameterSet) + unit([0x26, 0x01, 0xaf, 0x09, 0x40, 0x87, 0x04, 0xdb])
+}
+
+/// A BBC UHD sequence parameter set: 3840 x 2160, 10-bit, BT.2020 primaries with the
+/// SDR-compatible transfer function (14). It holds stream configuration only, no picture data.
+private let compatibleParameterSet = "420101022000000300900000030000030099a001e020021c4d966626491b4bc050848704db0800001f4000030d4040"
+private func bytes(_ hex: String) -> [UInt8] { stride(from: 0, to: hex.count, by: 2).map { UInt8(hex.dropFirst($0).prefix(2), radix: 16)! } }
+private func hlgSignallingTests() {
+    let original = bytes(compatibleParameterSet)
+    // transfer_characteristics starts one bit into the 0x87: 14 becomes 18 by changing that byte alone.
+    let expected = bytes(compatibleParameterSet.replacingOccurrences(of: "848704", with: "848904"))
+    guard let promoted = HLGSignalling.promote(sequenceParameterSet: original) else { fatalError("Compatible HLG parameter set was not promoted") }
+    precondition(promoted == expected, "Only the transfer function changes, in place, keeping emulation prevention bytes")
+    precondition(HLGSignalling.promote(sequenceParameterSet: promoted) == nil, "A parameter set already declaring HLG is left alone")
+    for unreadable in [[UInt8](), Array(original.prefix(20)), Array(original.dropLast(12)), [UInt8](repeating: 0, count: 47), [UInt8](repeating: 0xff, count: 47)] {
+        precondition(HLGSignalling.promote(sequenceParameterSet: unreadable) == nil, "Truncated or unreadable parameter sets are left alone")
+    }
+    var otherPrimaries = original; otherPrimaries[33] ^= 0x02 // colour_primaries 9 becomes 13
+    precondition(HLGSignalling.promote(sequenceParameterSet: otherPrimaries) == nil, "Only BT.2020 video is promoted")
+
+    // A fragment is a run of length-prefixed units: access unit delimiter, parameter set, then a slice.
+    func unit(_ payload: [UInt8]) -> Data { be(payload.count) + Data(payload) }
+    let delimiter: [UInt8] = [0x46, 0x01, 0x50], slice: [UInt8] = [0x26, 0x01, 0xaf, 0x09, 0x40, 0x87, 0x04, 0xdb]
+    func video(_ parameterSet: [UInt8], trailing: Data = Data()) -> Data {
+        box("moof", box("mfhd", be(0) + be(1))) + box("mdat", unit(delimiter) + unit(parameterSet) + unit(slice) + trailing)
+    }
+    precondition(HLGSignalling.promote(video(original)) == video(expected), "Every parameter set in a fragment is promoted; other units are untouched")
+    precondition(HLGSignalling.promote(video(expected)) == video(expected), "Promotion is idempotent")
+    // BBC's packager leaves six unreferenced bytes after the last sample of some fragments.
+    for tail in [Data("BBC RD".utf8), Data([0, 0, 0]), Data([0, 0, 0, 1, 0x42, 0x01, 0x01])] {
+        precondition(HLGSignalling.promote(video(original, trailing: tail)) == video(expected, trailing: tail), "An unreferenced tail does not stop the rewrite, and is preserved")
+    }
+    let leading = box("moof", box("mfhd", be(0) + be(1))) + box("mdat", Data("BBC RD".utf8) + unit(original))
+    precondition(HLGSignalling.promote(leading) == leading, "Bytes that are not units are never searched for parameter sets")
+    precondition(HLGSignalling.promote(fragment(padding: 0)) == fragment(padding: 0), "Fragments without parameter sets are unchanged")
+    let truncated = Data(video(original).dropLast())
+    precondition(HLGSignalling.promote(truncated) == truncated, "Malformed fragments are returned unchanged")
 }
