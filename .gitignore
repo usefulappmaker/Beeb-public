@@ -29,3 +29,15 @@ TwinVine/
 
 **/._*
 __MACOSX/
+
+# Fork: local renew config/state and sync-server data
+tools/renew/renew.conf
+tools/renew/devices.txt
+tools/renew/state/
+tools/renew/build/
+tools/renew/renew.log
+tools/renew/renew-launchd.err
+sync-server/standalone/data/
+sync-server/**/beeb_history.json
+sync-server/**/beeb_sync.json
+__pycache__/
