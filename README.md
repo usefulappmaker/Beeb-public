@@ -6,11 +6,11 @@
 
 **An independent BBC player for Apple TV, with 4K HLG HDR and Apple's native playback controls.**
 
-Beeb is a native SwiftUI app for **tvOS 17 and later**. Browse BBC programmes, watch live television, save shows and pick up where you left off. When a compatible UHD version and UHD setup is connected, Beeb plays the original 4K HLG stream without video transcoding.
+Beeb is a native SwiftUI app for **tvOS 17 and later**. Browse BBC programmes, watch live television and the TV guide, save shows and pick up where you left off, with a profile for each person and a kids mode. When a compatible UHD version and UHD setup is connected, Beeb plays the original 4K HLG stream without video transcoding. A preview of **Beeb for Mac** (macOS 14+) is built from the same sources.
 
 This is an unofficial project, not produced or endorsed by the BBC. Choose **source code** to build with Xcode, or the **prebuilt unsigned IPA** to sign locally without compiling Beeb. Both require your own Apple signing account and device provisioning. There is no App Store/TestFlight release or universally installable signed IPA.
 
-[Install from source](#install-on-apple-tv) · [Install the unsigned IPA](INSTALL-IPA.md) · [Enable BBC UHD](#enable-bbc-uhd) · [Troubleshooting](TROUBLESHOOTING.md)
+[Install from source](#install-on-apple-tv) · [Install the unsigned IPA](INSTALL-IPA.md) · [Beeb for Mac](INSTALL-MAC.md) · [Enable BBC UHD](#enable-bbc-uhd) · [Household sync](docs/SYNC.md) · [Troubleshooting](TROUBLESHOOTING.md)
 
 ## New in 0.11.0
 
@@ -31,11 +31,14 @@ Beeb 0.11.0 is the biggest update yet, with community contributions from [lewisb
 
 ![Beeb Modern Sidebar homepage](docs/screenshots/modern-sidebar.png)
 
-*The homescreen and Settings captures show the native 0.10.8 interface using cached BBC listings and artwork. The older playback screenshots below are from the [original Reddit announcement](https://www.reddit.com/r/iplayer/comments/1x7kzsi/i_built_beeb_an_unofficial_apple_tv_bbc_player/); current playback quality badges read 4K, FHD, HD or SD.*
+*The homescreen and Settings captures show the native 0.10.8 interface using cached BBC listings and artwork, before the 0.11.0 profile button and Channels page. The older playback screenshots below are from the [original Reddit announcement](https://www.reddit.com/r/iplayer/comments/1x7kzsi/i_built_beeb_an_unofficial_apple_tv_bbc_player/); current playback quality badges read 4K, FHD, HD or SD.*
 
-**Current release: 0.11.0 (build 41).** See [the changelog](CHANGELOG.md).
+**Current release: [0.11.0 (build 41)](https://github.com/usefulappmaker/Beeb-public/releases/tag/v0.11.0).** See [the changelog](CHANGELOG.md) for every release.
 
-## Changes in 0.10.9
+<details>
+<summary>Earlier releases: 0.10.9 and 0.10.8</summary>
+
+### Changes in 0.10.9
 
 Changes since **0.10.8**:
 
@@ -48,8 +51,7 @@ Changes since **0.10.8**:
 - **Cleaner Live page:** removed the explanatory quality line below the heading.
 - **Simpler setup screen:** removed manual helper setup and setup-URL entry. Updated installation and UHD instructions for the new flow.
 
-
-## Features introduced in 0.10.8
+### Features introduced in 0.10.8
 
 - **Homescreen Layout:** choose Classic or Modern in Settings. Modern offers a floating Topbar or a Sidebar, and remembers your navigation choice when you switch layouts.
 - **Modern homescreens:** large programme artwork, pink focus accents and navigation that scrolls away with the banner as you browse the rows below.
@@ -60,9 +62,6 @@ Changes since **0.10.8**:
 - **More reliable episode loading:** updated BBC episode discovery and version selection for both HD and UHD playback.
 
 ![Homescreen Layout options in Settings](docs/screenshots/homescreen-settings.png)
-
-<details>
-<summary>Classic, Modern Topbar and redesigned Browse</summary>
 
 ![Classic homescreen](docs/screenshots/classic-home.png)
 
@@ -86,13 +85,18 @@ Changes since **0.10.8**:
 | **Skip intro and recap** | Native contextual buttons use BBC-supplied timings matched to the version actually playing. Buttons appear only during a supplied skip interval. |
 | **Received-quality badge** | Shows an outlined 4K, FHD, HD or SD badge beside the episode metadata in the playback controls. The 4K label requires a received picture of at least 2160p; it does not infer HDR from BBC catalogue flags. |
 | **4K UHD category** | A saved UHD listing is available immediately. Beeb refreshes BBC’s UHD webpage daily, keeps cached discoveries, and checks episode-level availability when you open a programme. No full-catalogue episode scan. |
-| **Search** | Search the full cached BBC programme catalogue by title and synopsis using the native Apple TV keyboard, iPhone keyboard or Siri Remote dictation where supported. |
-| **Continue Watching and Up next** | Saves progress locally across launches. Resume an episode, start over, remove a show from the row or open the next episode after completion. |
-| **Programme discovery** | Featured programmes, readable categories, continuous category/A–Z browsing, series selectors and ordered episode lists. Episodes load on demand rather than indexing the whole catalogue at launch. |
+| **Search** | Search the full cached BBC programme catalogue by title and synopsis using the native Apple TV keyboard, iPhone keyboard or Siri Remote dictation where supported. Results are prepared in the background, so typing and dictation don't stall. |
+| **Profiles** | Each person has their own Continue Watching and Saved list. Manage profiles in **Settings → Profiles**, switch with the profile button in the top bar, and choose last used, a fixed profile or ask on launch. |
+| **Kids mode** | A kids profile shows CBeebies and CBBC only, hides programmes with BBC guidance warnings, and removes Search, Browse, 4K and Settings. An optional PIN is needed to leave it. |
+| **Household sync (optional)** | Share profiles, Continue Watching, Saved and the kids PIN between your Apple TVs through a server you run yourself (Home Assistant or Python/Docker). Off until set up in **Settings → Household sync**; see [docs/SYNC.md](docs/SYNC.md). |
+| **Continue Watching and Up next** | Saves each profile's progress across launches. Resume an episode, start over, remove a show from the row or open the next episode after completion. |
+| **Programme discovery** | Featured programmes, readable categories, continuous category/A–Z browsing, and programme pages with the newest series first, series tabs, a Start watching/Resume button and a 3–4 column episode grid. Episodes load on demand rather than indexing the whole catalogue at launch. |
 | **Saved programmes** | Bookmark a show and open its current available episodes later. |
-| **Live channels on Top Shelf** | Move Beeb to the home screen’s top row, press Up to its landscape channel cards, then Select to start that channel directly. Play/Pause starts it too. Current programme artwork is cached, with a channel card fallback. **Settings → Top Shelf** can show Continue Watching, Saved or a mix instead. |
+| **Top Shelf** | Move Beeb to the home screen’s top row and press Up. **Settings → Top Shelf** chooses Live TV (the default), Continue Watching, Saved or a Mix. Select a live channel card to start it directly, a Continue Watching item to resume, or a Saved programme to open it. An empty list falls back to Live TV. |
 | **RED additional streams** | During live TV, select RED beside Info to open Red Button or Red Button UHD. An unavailable additional feed leaves the current channel playing. The curated UHD event feed uses a rolling DASH-to-HLS bridge on Apple TV, without video transcoding, and is only available when BBC supplies a compatible live HLG event. It is separate from catch-up UHD setup. |
-| **Live television** | BBC channel tiles show the scheduled programme's title and artwork. Live quality and subtitles depend on the supplied feed. |
+| **Channels and TV guide** | The **Channels** page shows each channel with an ON NOW card and its featured programmes. Switch to **Guide** for a timeline of every channel, up to eight hours back; programmes already on iPlayer can be watched on demand. Live quality and subtitles depend on the supplied feed. |
+| **Watch from start** | **Watch from start** and **Live** buttons in the live player jump to the start of the programme on air or back to live, with an optional prompt when you open a channel part-way through a programme. |
+| **Beeb for Mac (preview)** | A macOS 14 app built from the same sources, with the guide and an AVKit player with Picture in Picture. UHD needs a self-signed build; see [INSTALL-MAC.md](INSTALL-MAC.md). |
 | **Artwork suited to each view** | Plain promotional images for homepage banners, individual episode stills for episode cards, programme artwork for show listings, and clickable portrait-only posters in Stream Every Episode. Larger homepage cards omit redundant action text. |
 
 ## Screenshots
@@ -117,11 +121,11 @@ Changes since **0.10.8**:
 ### Choose your download
 
 - **Public source ZIP:** build and sign through Xcode using the steps below.
-- **Beeb-0.11.0-public-unsigned.ipa:** a prebuilt arm64 tvOS app, intended as a separate GitHub Release asset with a SHA-256 file. **Requires your own signing before installation.** Follow [the IPA signing/install guide](INSTALL-IPA.md). It contains no provisioning profile, developer signature or UHD identity.
+- **Beeb-0.11.0-public-unsigned.ipa:** a prebuilt arm64 tvOS app, published as a GitHub Release asset with a SHA-256 file. **Requires your own signing before installation.** Follow [the IPA signing/install guide](INSTALL-IPA.md). It contains no provisioning profile, developer signature or UHD identity.
 
-The **Mac preview** is a separate download: see [INSTALL-MAC.md](INSTALL-MAC.md).
+The **Mac preview** is a separate download, **Beeb-0.11.0-mac-unsigned.zip**: see [INSTALL-MAC.md](INSTALL-MAC.md).
 
-Download the **[unsigned IPA and matching source ZIP from GitHub Releases](https://github.com/usefulappmaker/Beeb-public/releases/latest)**. The source ZIP intentionally excludes compiled binaries; the IPA is a separate release download.
+Download the **[unsigned IPA, Mac preview and matching source ZIP from GitHub Releases](https://github.com/usefulappmaker/Beeb-public/releases/latest)**, each with a SHA-256 file. The source ZIP intentionally excludes compiled binaries; the apps are separate release downloads.
 
 ### What you need
 
@@ -142,7 +146,7 @@ Download the **[unsigned IPA and matching source ZIP from GitHub Releases](https
 6. Choose the **BeebHD scheme** and your **physical Apple TV** as the run destination, then press **Command-R**. Xcode builds, signs, installs and launches **Beeb**.
 7. Open an available programme and press the pink Play logo. Confirm HD playback works before adding UHD setup.
 
-A free **Personal Team** requires periodic reprovisioning and has seven-day limits. When signing expires, Run from Xcode again. Paid developer profiles also expire. Keep your bundle identifier and team unchanged when updating to preserve access to the same app data and Keychain setup. See [Apple's account guidance](https://developer.apple.com/help/account/basics/about-your-developer-account).
+A free **Personal Team** requires periodic reprovisioning and has seven-day limits. When signing expires, Run from Xcode again, or use the [renew scripts](tools/renew/README.md) to rebuild and reinstall on all your Apple TVs, optionally from an always-on Mac. Paid developer profiles also expire. Keep your bundle identifier and team unchanged when updating to preserve access to the same app data and Keychain setup. See [Apple's account guidance](https://developer.apple.com/help/account/basics/about-your-developer-account).
 
 For pairing details, update instructions and signing errors, see the full [installation guide](INSTALL.md). This source-install route requires a Mac; an unsigned IPA cannot simply be opened on Apple TV.
 
@@ -181,7 +185,7 @@ BBC **TTML captions become segmented WebVTT** advertised as a real HLS subtitle 
 ## Limits and local data
 
 - No offline downloads or BBC account/history synchronisation.
-- Saved programmes and watch progress stay locally in the app.
+- Profiles, Saved programmes, watch progress and the kids PIN stay on each Apple TV, unless you turn on optional [household sync](docs/SYNC.md) to a server you run. Nothing is sent anywhere else.
 - UHD depends on the actual episode/version, compatible equipment and an accepted identity.
 - Dynamic, multi-period and protected DASH presentations are not supported by this bridge.
 - BBC services and TwinVine's configuration can change independently of this project.
