@@ -45,6 +45,7 @@ Keep generated archives and signing profiles out of the public repository.
 ./test-uhd.sh
 ./test-dash.sh
 ./test-live-channels.sh
+./test-channel-guide.sh
 ./test-live-uhd.sh
 python3 Tests/test_public_release.py
 .venv-setup/bin/python Tests/test_setup_helper.py

@@ -923,7 +923,7 @@ struct LiveView: View {
     var launch: LiveLaunch? = nil
     var library: Library? = nil
     @State private var selectedChannel: String?
-    @State private var guides: [String: ChannelGuide] = [:]
+    @State private var guides: [String: ChannelFeatured] = [:]
     @State private var detail: Programme?
     @FocusState private var stripFocus: String?
     @AppStorage("offerLiveFromStart") private var offerFromStart = false
@@ -941,17 +941,26 @@ struct LiveView: View {
     @Environment(\.scenePhase) private var phase
     @StateObject private var state = LiveState()
     @StateObject private var playback = PlaybackModel()
-    var body: some View {
+    @EnvironmentObject private var history: WatchHistory
+    @AppStorage("liveMode") private var liveMode = "Channels"
+    private var visibleChannels: [LiveChannel] { state.channels.filter { !profileStore.kidsMode || Self.kidsChannels.contains($0.id) } }
+    @ViewBuilder private var header: some View {
+        // Leading edge, directly beneath the navigation button: Down reaches it from the top-left
+        // corner and Down again enters the page. It stays put when the mode changes.
+        BeebNavigationSegments(title: "Live view", options: ["Channels", "Guide"], selection: $liveMode).frame(width: 520)
+        if state.channels.isEmpty && state.error == nil { ProgressView("Getting channels…") }
+        if let error = state.error { Text(error).foregroundStyle(.orange); Button("Retry channels") { state.retry += 1 } }
+        if let error = playback.error { Text(error).foregroundStyle(.orange) }
+        if playback.loading { HStack { ProgressView("Connecting to live channel…"); Button("Cancel") { playback.stop() } } }
+    }
+    @ViewBuilder private var channelsPage: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 30) {
-                if state.channels.isEmpty && state.error == nil { ProgressView("Getting channels…") }
-                if let error = state.error { Text(error).foregroundStyle(.orange); Button("Retry channels") { state.retry += 1 } }
-                if let error = playback.error { Text(error).foregroundStyle(.orange) }
-                if playback.loading { HStack { ProgressView("Connecting to live channel…"); Button("Cancel") { playback.stop() } } }
+                header
                 // channel strip
                 ScrollView(.horizontal) {
                     HStack(spacing: 6) {
-                        ForEach(state.channels.filter { !profileStore.kidsMode || Self.kidsChannels.contains($0.id) }) { channel in
+                        ForEach(visibleChannels) { channel in
                             Button { play(channel) } label: {
                                 Text(ChannelWordmark.style(id: channel.id, title: channel.title).label)
                             }.buttonStyle(ChannelStripStyle(id: channel.id, title: channel.title, selected: currentChannelID == channel.id))
@@ -959,7 +968,7 @@ struct LiveView: View {
                         }
                     }.padding(.vertical, 20).padding(.horizontal, 8)
                 }.scrollClipDisabled().focusSection()
-                if let channel = state.channels.filter { !profileStore.kidsMode || Self.kidsChannels.contains($0.id) }.first(where: { $0.id == currentChannelID }) {
+                if let channel = visibleChannels.first(where: { $0.id == currentChannelID }) {
                     let guide = guides[channel.id]
                     let hide = profileStore.kidsMode
                     ScrollView(.horizontal) {
@@ -995,6 +1004,26 @@ struct LiveView: View {
         .task(id: currentChannelID) {
             guard let id = currentChannelID, guides[id] == nil else { return }
             guides[id] = await ChannelGuideAPI.load(id)
+        }
+    }
+    var body: some View {
+        Group {
+            if liveMode == "Guide" {
+                // The guide scrolls itself, keeping its programme panel in view.
+                VStack(alignment: .leading, spacing: 24) {
+                    header
+                    ChannelGuideView(channels: visibleChannels,
+                                     playLive: { play($0) },
+                                     playEpisode: { programme in
+                                         if profileStore.kidsMode && !(programme.guidance ?? "").isEmpty {
+                                             state.error = "This programme isn't available on a kids profile."; return
+                                         }
+                                         playback.start(programme, history: history) { state.playing = true }
+                                     })
+                }.padding(.horizontal, 60).padding(.top, 24)
+            } else {
+                channelsPage
+            }
         }
         .sheet(item: $detail) { programme in if let library { DetailView(programme: programme, library: library) } }
         .confirmationDialog(askFromStart.map { $0.current?.title ?? $0.title } ?? "",
@@ -1467,20 +1496,20 @@ struct KidsHomeView: View {
 }
 
 // data + views
-struct ChannelGuide {
+struct ChannelFeatured {
     struct Row: Identifiable { let id: String; let title: String; let episodes: [CatalogueEpisode] }
     var featured: [CatalogueEpisode] = []
     var rows: [Row] = []
 }
 enum ChannelGuideAPI {
-    static func load(_ channelID: String) async -> ChannelGuide {
-        guard channelID.range(of: "^[a-z0-9_]+$", options: .regularExpression) != nil else { return ChannelGuide() }
+    static func load(_ channelID: String) async -> ChannelFeatured {
+        guard channelID.range(of: "^[a-z0-9_]+$", options: .regularExpression) != nil else { return ChannelFeatured() }
         let api = DiscoveryAPI()
         func json(_ path: String) async -> [String: Any]? {
             guard let url = URL(string: "https://ibl.api.bbc.co.uk/ibl/v1/" + path), let data = try? await api.fetch(url) else { return nil }
             return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
         }
-        var guide = ChannelGuide()
+        var guide = ChannelFeatured()
         guard let elements = ((await json("channels/\(channelID)/highlights"))?["channel_highlights"] as? [String: Any])?["elements"] as? [[String: Any]] else { return guide }
         var groups: [(String, String)] = []
         for element in elements {
