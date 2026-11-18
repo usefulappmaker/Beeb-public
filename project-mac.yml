@@ -37,8 +37,8 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: Beeb
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.entertainment
         INFOPLIST_KEY_NSHumanReadableCopyright: "GPL-3.0-or-later. Not produced or endorsed by the BBC."
-        MARKETING_VERSION: "0.10.9"
-        CURRENT_PROJECT_VERSION: "40"
+        MARKETING_VERSION: "0.11.0"
+        CURRENT_PROJECT_VERSION: "41"
         SWIFT_VERSION: "5.0"
         ENABLE_HARDENED_RUNTIME: YES
         # The UHD identity lives in the data protection keychain, which needs this entitlement.

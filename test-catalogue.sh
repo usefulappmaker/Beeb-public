@@ -9,7 +9,7 @@ xcrun swiftc "${common[@]}" Tests/CatalogueTests.swift -o "$test_dir/catalogue-t
 "$test_dir/catalogue-tests" "$@"
 xcrun swiftc "${common[@]}" BeebHD/CatalogueStore.swift Tests/CatalogueLifecycleTests.swift -o "$test_dir/catalogue-lifecycle-tests"
 "$test_dir/catalogue-lifecycle-tests"
-xcrun swiftc "${common[@]}" BeebHD/Library.swift Tests/LibraryTests.swift -o "$test_dir/library-tests"
+xcrun swiftc "${common[@]}" BeebHD/Profiles.swift BeebHD/Library.swift Tests/LibraryTests.swift -o "$test_dir/library-tests"
 "$test_dir/library-tests"
 
 xcrun swiftc "${common[@]}" BeebHD/CatalogueIndex.swift BeebHD/CatalogueIndexStore.swift Tests/CatalogueIndexTests.swift -o "$test_dir/catalogue-index-tests"
