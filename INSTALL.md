@@ -54,7 +54,7 @@ Browse to an available episode and press the pink logo Play button. With no UHD 
 
 Show the playback controls to see the received-quality badge. Use the native subtitle control to choose English when available. On a supported tvOS release, **Settings → Video and Audio → Automatic Subtitles → Show on Skip Back** enables temporary subtitles after skipping back. Style captions through Apple's accessibility/subtitle settings.
 
-Then, if desired, follow [SETUP-UHD.md](SETUP-UHD.md). TwinVine is unnecessary for ordinary HD/live playback.
+Then, if desired, follow [SETUP-UHD.md](SETUP-UHD.md). The optional Enable BBC UHD step runs directly on Apple TV; ordinary HD/live playback needs no UHD setup.
 
 ## 7. Update and renew signing
 

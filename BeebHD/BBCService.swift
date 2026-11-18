@@ -24,6 +24,7 @@ struct PlaybackSource {
     var requestedHeight: Int? = nil
     var videoRange: String? = nil
     var versionID: String? = nil
+    var liveCaptionTemplates: [URL] = []
 }
 enum BBCError: LocalizedError {
     case message(String)
@@ -62,22 +63,50 @@ struct BBCService {
         }
         return data
     }
+    static func episodeMetadata(_ data: Data, id: String) throws -> [String: Any] {
+        guard let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let episode = (root["episodes"] as? [[String: Any]])?.first(where: { $0["id"] as? String == id }) else {
+            throw BBCError.message("BBC's episode service returned unreadable details. Please try again later.")
+        }
+        return episode
+    }
+    static func playbackVersions(_ episode: [String: Any], now: Date = Date()) -> [String] {
+        let formatter = ISO8601DateFormatter()
+        func date(_ raw: Any?) -> Date? {
+            guard let raw = raw as? String else { return nil }
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            return formatter.date(from: raw) ?? ISO8601DateFormatter().date(from: raw)
+        }
+        let versions = (episode["versions"] as? [[String: Any]] ?? []).filter { version in
+            let kind = (version["kind"] as? String ?? "original").lowercased()
+            guard !kind.contains("signed"), !kind.contains("describ"), let id = version["id"] as? String,
+                  (try? pid(id)) != nil else { return false }
+            let availability = version["availability"] as? [String: Any] ?? [:]
+            if let start = date(availability["start"]), start > now { return false }
+            if let end = date(availability["end"]), end <= now { return false }
+            return true
+        }
+        let ordered = versions.filter { $0["uhd"] as? Bool == true } + versions.filter { $0["uhd"] as? Bool != true }
+        var seen = Set<String>()
+        return ordered.compactMap { $0["id"] as? String }.filter { seen.insert($0).inserted }
+    }
+    static func programme(_ data: Data, id: String) throws -> Programme {
+        let episode = try episodeMetadata(data, id: id)
+        guard let versionID = playbackVersions(episode).first else {
+            throw BBCError.message("No standard version of this episode is currently available.")
+        }
+        let version = (episode["versions"] as? [[String: Any]])?.first { $0["id"] as? String == versionID } ?? [:]
+        let synopses = episode["synopses"] as? [String: Any] ?? [:]
+        let images = episode["images"] as? [String: Any] ?? [:]
+        let artwork = (images["standard"] as? String ?? "").replacingOccurrences(of: "{recipe}", with: "640x360")
+        let guidance = ((version["guidance"] as? [String: Any])?["text"] as? [String: Any])?["large"] as? String
+        return Programme(id: id, title: episode["title"] as? String ?? id,
+                         summary: ["large", "medium", "small"].compactMap { synopses[$0] as? String }.first ?? "",
+                         image: URL(string: artwork), version: versionID, guidance: guidance)
+    }
     func programme(_ id: String) async throws -> Programme {
         let id = try Self.pid(id)
-        let data = try await fetch(URL(string: "https://www.bbc.co.uk/programmes/\(id)/playlist.json")!)
-        guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let ver = root["defaultAvailableVersion"] as? [String: Any],
-              let config = ver["smpConfig"] as? [String: Any],
-              let items = config["items"] as? [[String: Any]],
-              let item = items.first, item["kind"] as? String == "programme",
-              let vpid = item["vpid"] as? String else {
-            throw BBCError.message("No playable TV episode was found. Use an individual episode URL rather than a series URL.")
-        }
-        var image = (config["holdingImageURL"] as? String ?? "").replacingOccurrences(of: "$recipe", with: "640x360")
-        if image.hasPrefix("//") { image = "https:" + image }
-        return Programme(id: id, title: config["title"] as? String ?? id,
-                         summary: config["summary"] as? String ?? "", image: URL(string: image),
-                         version: vpid, guidance: config["guidance"] as? String)
+        return try Self.programme(await fetch(URL(string: "https://ibl.api.bbc.co.uk/ibl/v1/episodes/\(id)")!), id: id)
     }
     static func resolve(_ reference: String, base: URL) -> URL? {
         guard let url = URL(string: reference, relativeTo: base)?.absoluteURL,
@@ -179,14 +208,22 @@ struct BBCService {
 final class MediaSelector: NSObject, XMLParserDelegate {
     var urls = [URL]()
     var error: String?
+    var liveCaptionTemplates = [URL]()
+    private var captions = false
     private var video = false
     func parser(_ parser: XMLParser, didStartElement element: String, namespaceURI: String?, qualifiedName: String?, attributes: [String: String]) {
-        if element == "media" { video = attributes["kind"] == "video" }
+        if element == "media" {
+            video = attributes["kind"] == "video"
+            captions = attributes["kind"] == "captions" && (attributes["type"] ?? "").hasPrefix("application/ttml+xml")
+        }
+        if element == "connection", captions, attributes["transferFormat"] == "dash",
+           let href = attributes["href"], href.contains("$Number$"), let url = URL(string: href), url.scheme == "https",
+           !liveCaptionTemplates.contains(url) { liveCaptionTemplates.append(url) }
         if element == "error" { error = attributes["id"] ?? "Unavailable" }
         if element == "connection", video, attributes["transferFormat"] == "hls",
            let s = attributes["href"], let url = URL(string: s), url.scheme == "https", !urls.contains(url) { urls.append(url) }
     }
     func parser(_ parser: XMLParser, didEndElement element: String, namespaceURI: String?, qualifiedName: String?) {
-        if element == "media" { video = false }
+        if element == "media" { video = false; captions = false }
     }
 }

@@ -1,0 +1,3 @@
+# Copy to renew.conf. Use the same values every time you renew.
+BEEB_BUNDLE_ID="com.yourname.beeb"     # any unique reverse-DNS id of your own
+APPLE_TEAM_ID="ABCDE12345"             # your (Personal) Team id from Xcode

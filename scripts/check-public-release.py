@@ -6,13 +6,13 @@ import struct
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-EXCLUDED = {'.git', 'build', 'dist', '__pycache__', '.venv-setup', '.venv'}
+EXCLUDED = {'.git', 'build', 'dist', '__pycache__', '.venv-setup', '.venv', '__MACOSX'}
 SUFFIXES = {'.swift', '.plist', '.entitlements', '.pbxproj', '.xcscheme',
             '.xcworkspacedata', '.png', '.md', '.txt', '.py', '.sh', '.command', '.json'}
 ROOT_NAMES = {'.gitignore', '.gitattributes'}
 PATTERNS = {
     'local account path': re.compile(rb'/(?:Users|home)/[A-Za-z0-9_.-]+/'),
-    'private key': re.compile(rb'-----BEGIN (?:RSA |EC |OPENSSH |ENCRYPTED )?PRIVATE KEY-----'),
+    'private key': re.compile(rb'-----BEGIN (?:RSA |EC |OPENSSH |ENCRYPTED )?PRIVATE KEY-----[ \t\r\n]+[A-Za-z0-9+/]{32,}'),
     'GitHub token': re.compile(rb'\b(?:gh[pousr]_[A-Za-z0-9]{25,}|github_pat_[A-Za-z0-9_]{30,})'),
     'API key': re.compile(rb'\bsk-(?:proj-)?[A-Za-z0-9_-]{30,}'),
     'complete setup link': re.compile(rb'https://[^\s]+/identity#fp=[a-f0-9]{64}&token=[a-f0-9]{64}'),
@@ -22,7 +22,7 @@ PATTERNS = {
 def source_files(root=ROOT):
     for path in sorted(root.rglob('*')):
         relative = path.relative_to(root)
-        if path.name == '.DS_Store':
+        if path.name == '.DS_Store' or any(part.startswith('._') for part in relative.parts):
             continue
         if any(part in EXCLUDED or part.startswith('.venv') for part in relative.parts):
             continue

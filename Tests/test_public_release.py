@@ -22,6 +22,11 @@ class ReleaseTests(unittest.TestCase):
             self.assertIn('selected signing team', descriptions)
             self.assertIn('local account path', descriptions)
 
+    def test_private_key_parser_marker_is_not_key_material(self):
+        marker = b'-----BEGIN ' + b'PRIVATE KEY-----'
+        self.assertIsNone(check.PATTERNS['private key'].search(marker))
+        self.assertIsNotNone(check.PATTERNS['private key'].search(marker + b'\n' + b'A' * 64 + b'\n'))
+
     def test_build_and_git_history_never_enter_source_archive(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
@@ -31,6 +36,9 @@ class ReleaseTests(unittest.TestCase):
                 path.write_text('excluded synthetic data')
             (root / 'README.md').write_text('public documentation')
             (root / '.DS_Store').write_bytes(b'synthetic Finder metadata')
+            (root / '._README.md').write_bytes(b'synthetic AppleDouble metadata')
+            (root / '__MACOSX').mkdir()
+            (root / '__MACOSX/._README.md').write_bytes(b'synthetic archive metadata')
             self.assertEqual([p.name for p in check.source_files(root)], ['README.md'])
 
     def test_symlinks_cannot_import_external_files(self):

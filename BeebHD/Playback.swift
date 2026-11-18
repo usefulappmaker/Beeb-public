@@ -18,11 +18,19 @@ import AVKit
     @Published var displayTitle = ""
     @Published var displaySubtitle = ""
     @Published private(set) var isLive = false
+    /// Start of the programme on air when a live channel was opened (for From start).
+    @Published private(set) var liveProgrammeStart: Date?
     @Published private(set) var infoProgramme: Programme?
     @Published private(set) var infoArtwork: Data?
+    @Published var additionalStreamError: String?
+    @Published private(set) var additionalStreamErrorID = UUID()
+    @Published private(set) var switchingAdditionalStream = false
+    private var additionalOperation: Task<Void,Never>?
+    private var liveUHD: LiveUHDPlaybackAccess?
     @Published var activeSkip: SkipMarker?
     private var skipMarkers = [SkipMarker]()
     private var extrasTasks = [Task<Void, Never>]()
+    private var liveSubtitles: LiveSubtitlePlaybackAccess?
     private var subtitleBridge: LocalHLSServer?
     private var clockObserver: Any?
     let player = AVPlayer()
@@ -66,13 +74,95 @@ import AVKit
             return try await BBCService().source(for: programme, require1080: require1080)
         }
     }
-    func startLive(_ selected: LiveChannel, ready: @escaping () -> Void) {
+    func startLive(_ selected: LiveChannel, fromStart: Bool = false, ready: @escaping () -> Void) {
         let channel = RegionalChannels.resolve(selected)
-        begin(title: channel.current?.title ?? channel.title, subtitle: channel.title, minimumHeight: 0, isLive: true, ready: ready) {
+        let programmeStart = selected.current?.start ?? channel.current?.start
+        var startAtBeginning = fromStart
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["BEEB_TEST_FROM_START"] == "1" { startAtBeginning = true }
+        #endif
+        let wantsStart = startAtBeginning
+        begin(title: channel.current?.title ?? channel.title, subtitle: channel.title, minimumHeight: 0, isLive: true, ready: { [weak self] in
+            ready()
+            if wantsStart { Task { @MainActor [weak self] in await self?.watchFromStartWhenReady() } }
+        }) {
             #if DEBUG
             if ProcessInfo.processInfo.environment["BEEB_LIVE_ROUTE_VALIDATE"] == "1", let raw = ProcessInfo.processInfo.environment["BEEB_PLAYER_URL"], let url = URL(string: raw) { return PlaybackSource(url: url, requested1080: false) }
             #endif
             return try await DiscoveryAPI().liveSource(channel)
+        }
+        liveProgrammeStart = programmeStart
+    }
+    /// Live: jump back to the start of the programme on air (or the earliest point the stream keeps).
+    func watchFromStart() {
+        guard isLive, let item = player.currentItem else { return }
+        guard let start = liveProgrammeStart else { seekToEarliest(); return }
+        if item.currentDate() != nil {   // the stream carries clock times: seek straight to the start time
+            item.seek(to: start) { [weak self] done in
+                if !done { Task { @MainActor [weak self] in self?.seekBack(to: start) } }
+            }
+        } else { seekBack(to: start) }
+    }
+    /// Without clock times: the live edge is "now" minus the stream's delay, so step back by the programme's age.
+    private func seekBack(to start: Date) {
+        guard let range = player.currentItem?.seekableTimeRanges.last?.timeRangeValue else { return }
+        let liveDelay = 20.0   // typical BBC live latency; landing a few seconds early beats missing the opening
+        let back = max(0, Date().timeIntervalSince(start) - liveDelay)
+        let target = max(range.start.seconds + 2, CMTimeRangeGetEnd(range).seconds - back)
+        player.seek(to: CMTime(seconds: target, preferredTimescale: 600))
+    }
+    /// Live: jump back to the live edge.
+    func goLive() {
+        guard isLive, let range = player.currentItem?.seekableTimeRanges.last?.timeRangeValue else { return }
+        player.seek(to: CMTimeRangeGetEnd(range))
+    }
+    private func seekToEarliest() {
+        guard let range = player.currentItem?.seekableTimeRanges.first?.timeRangeValue else { return }
+        player.seek(to: range.start + CMTime(seconds: 2, preferredTimescale: 600))
+    }
+    private func watchFromStartWhenReady() async {
+        for _ in 0..<150 {   // up to 15 s for the stream to become ready
+            if player.currentItem?.status == .readyToPlay { watchFromStart(); return }
+            if player.currentItem?.status == .failed { return }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+    }
+    /// Resolve first: an off-air event must not destroy the working channel.
+    func switchAdditionalStream(_ stream: AdditionalLiveStream) {
+        guard isLive, AdditionalLiveStream.all.contains(where: { $0.id == stream.id }) else { return }
+        additionalOperation?.cancel(); additionalStreamError = nil; switchingAdditionalStream = true
+        let id = generation
+        additionalOperation = Task { [weak self] in
+            let uhd = stream.id == "uk_bbc_stream_041" ? LiveUHDPlaybackAccess() : nil
+            var adopted = false
+            defer { if !adopted { uhd?.stop() } }
+            do {
+                let source: PlaybackSource
+                #if DEBUG
+                if ProcessInfo.processInfo.environment["BEEB_LIVE_ROUTE_VALIDATE"] == "1", let raw = ProcessInfo.processInfo.environment["BEEB_PLAYER_URL"], let url = URL(string:raw) {
+                    if ProcessInfo.processInfo.environment["BEEB_ADDITIONAL_UNAVAILABLE"] == stream.id { throw BBCError.message("This event is currently off air.") }
+                    source = PlaybackSource(url:url,requested1080:false)
+                } else if let uhd { source = try await uhd.source() }
+                else { source = try await DiscoveryAPI().liveSource(LiveChannel(id:stream.id,title:stream.title)) }
+                #else
+                if let uhd { source = try await uhd.source() }
+                else { source = try await DiscoveryAPI().liveSource(LiveChannel(id:stream.id,title:stream.title)) }
+                #endif
+                try Task.checkCancellation()
+                guard let self, self.generation == id, self.isLive else { return }
+                // stop() inside begin must not cancel the operation adopting its result.
+                self.additionalOperation = nil
+                adopted = true
+                self.begin(title:stream.title,subtitle:stream.title,minimumHeight:source.requestedHeight ?? 0,isLive:true,ready:{}) {
+                    self.liveUHD = uhd
+                    return source
+                }
+            } catch {
+                guard let self, !Task.isCancelled, self.generation == id else { return }
+                self.switchingAdditionalStream = false; self.additionalOperation = nil
+                self.additionalStreamErrorID = UUID()
+                self.additionalStreamError = error.localizedDescription
+            }
         }
     }
     private func applyInfo(to item: AVPlayerItem) {
@@ -203,6 +293,12 @@ import AVKit
         }
     }
     private func nativeSubtitleURL(for source: PlaybackSource) async -> URL {
+        if !source.liveCaptionTemplates.isEmpty {
+            let bridge = LiveSubtitlePlaybackAccess()
+            liveSubtitles = bridge
+            do { return try await bridge.start(source) }
+            catch { bridge.stop(); return source.url }
+        }
         guard let version = source.versionID else { return source.url }
         do {
             let cues = try await extrasAPI.subtitles(versionID: version)
@@ -250,6 +346,9 @@ import AVKit
                                 position: player.currentTime().seconds, duration: item.duration.seconds, ended: ended)
     }
     func stop() {
+        additionalOperation?.cancel(); additionalOperation = nil
+        switchingAdditionalStream = false; additionalStreamError = nil
+        liveUHD?.stop(); liveUHD = nil
         checkpoint(); tracking = nil
         extrasTasks.forEach { $0.cancel() }; extrasTasks = []
         if let clockObserver { player.removeTimeObserver(clockObserver) }; clockObserver = nil
@@ -257,6 +356,7 @@ import AVKit
         if let endedObserver { NotificationCenter.default.removeObserver(endedObserver) }; endedObserver = nil
         if let failedToEndObserver { NotificationCenter.default.removeObserver(failedToEndObserver) }; failedToEndObserver = nil
         generation = UUID(); operation?.cancel(); monitor?.cancel(); operation = nil; monitor = nil
+        liveSubtitles?.stop(); liveSubtitles = nil
         subtitleBridge?.stop(); subtitleBridge = nil
         uhdAccess.stop()
         PlaybackActivity.active = false
@@ -265,8 +365,12 @@ import AVKit
     }
     #if DEBUG
     func startLiveLayoutValidation(url: URL) {
-        begin(title: "Live playback layout check", subtitle: "BBC Two", minimumHeight: 0, isLive: true, ready: {}) {
-            PlaybackSource(url: url, requested1080: false)
+        let liveCaptionCheck = ProcessInfo.processInfo.environment["BEEB_LIVE_SUBTITLE_VALIDATE"] == "1"
+        begin(title: liveCaptionCheck ? "BBC One" : "Live playback layout check", subtitle: liveCaptionCheck ? "BBC One London" : "BBC Two", minimumHeight: 0, isLive: true, ready: {}) {
+            if ProcessInfo.processInfo.environment["BEEB_LIVE_SUBTITLE_VALIDATE"] == "1" {
+                return try await DiscoveryAPI().liveSource(LiveChannel(id: "bbc_one_london", title: "BBC One"))
+            }
+            return PlaybackSource(url: url, requested1080: false)
         }
     }
     #endif
@@ -290,13 +394,19 @@ struct NativePlayer: UIViewControllerRepresentable {
         controller.playbackControlsIncludeInfoViews = true
         controller.transportBarIncludesTitleView = false
         controller.speeds = model.isLive ? [] : [0.5, 0.75, 1, 1.25, 1.5, 2].map { AVPlaybackSpeed(rate: Float($0), localizedName: "\($0)×") }
-        controller.transportBarCustomMenuItems = [container.infoAction]
+        container.configureMenus(isLive:model.isLive)
         container.loadViewIfNeeded()
         return container
     }
     func updateUIViewController(_ container: PlayerContainerViewController, context: Context) {
         let controller = container.playerController
         if model.isLive, !controller.speeds.isEmpty { controller.speeds = [] }
+        container.configureMenus(isLive:model.isLive)
+        container.chooseAdditional = { [weak model] stream in model?.switchAdditionalStream(stream) }
+        container.fromStart = { [weak model] in model?.watchFromStart() }
+        container.backToLive = { [weak model] in model?.goLive() }
+        container.redAction.attributes = model.switchingAdditionalStream ? [.disabled] : []
+        container.reportAdditionalError(model.additionalStreamError, id:model.additionalStreamErrorID)
         container.infoController.configure(model: model)
         let subtitle = model.displaySubtitle
         context.coordinator.badge.configure(quality: model.qualityBadge, title: model.displayTitle, subtitle: subtitle, isLive: model.isLive)
@@ -339,7 +449,62 @@ final class PlayerContainerViewController: UIViewController, UIGestureRecognizer
     private let badge: PlayerQualityOverlay
     var controlsVisible = false
     private(set) var infoVisible = false
+    var chooseAdditional: ((AdditionalLiveStream) -> Void)?
+    var fromStart: (() -> Void)?
+    var backToLive: (() -> Void)?
+    lazy var fromStartAction = UIAction(title: "Watch from start", image: UIImage(systemName: "arrow.counterclockwise.circle")) { [weak self] _ in self?.fromStart?() }
+    lazy var liveAction = UIAction(title: "Live", image: Self.textIcon("LIVE")) { [weak self] _ in self?.backToLive?() }
+    private var liveMenus = false
+    private var lastAdditionalError: UUID?
+    lazy var redAction = UIAction(title:"Additional streams", image:Self.redIcon()) { [weak self] _ in self?.showAdditionalStreams() }
     lazy var infoAction = UIAction(title: "Info", image: UIImage(systemName: "info.circle")) { [weak self] _ in self?.showInfo() }
+    static func textIcon(_ label: String) -> UIImage {
+        let attributes: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: 18, weight: .semibold), .foregroundColor: UIColor.white]
+        let text = label as NSString
+        let measured = text.size(withAttributes: attributes)
+        let size = CGSize(width: max(40, measured.width + 8), height: 34)
+        return UIGraphicsImageRenderer(size: size).image { _ in
+            text.draw(at: CGPoint(x: (size.width - measured.width) / 2, y: (size.height - measured.height) / 2), withAttributes: attributes)
+        }.withRenderingMode(.alwaysTemplate)
+    }
+    static func redIcon() -> UIImage {
+        let size = CGSize(width:40,height:34)
+        return UIGraphicsImageRenderer(size:size).image { _ in
+            let text = "RED" as NSString
+            let attributes: [NSAttributedString.Key:Any] = [.font:UIFont.systemFont(ofSize:18,weight:.semibold),.foregroundColor:UIColor.white]
+            let measured = text.size(withAttributes:attributes)
+            text.draw(at:CGPoint(x:(size.width-measured.width)/2,y:(size.height-measured.height)/2),withAttributes:attributes)
+        }.withRenderingMode(.alwaysTemplate)
+    }
+    func configureMenus(isLive: Bool) {
+        guard liveMenus != isLive || playerController.transportBarCustomMenuItems.isEmpty else { return }
+        liveMenus = isLive
+        playerController.transportBarCustomMenuItems = isLive ? [fromStartAction, liveAction, redAction, infoAction] : [infoAction]
+    }
+    private func showAdditionalStreams() {
+        guard liveMenus, presentedViewController == nil, !infoVisible else { return }
+        backExitArmed = false
+        let menu = UIAlertController(title:"Additional streams",message:nil,preferredStyle:.actionSheet)
+        for stream in AdditionalLiveStream.all {
+            menu.addAction(UIAlertAction(title:stream.title,style:.default) { [weak self, weak menu] _ in
+                menu?.dismiss(animated:true) { self?.chooseAdditional?(stream) }
+            })
+        }
+        menu.addAction(UIAlertAction(title: "Cancel", style: .cancel) { [weak self] _ in
+            self?.backExitArmed = false
+        })
+        present(menu,animated:true)
+    }
+    func reportAdditionalError(_ message: String?, id:UUID) {
+        guard let message else { lastAdditionalError = nil; return }
+        guard id != lastAdditionalError, viewIfLoaded?.window != nil else { return }
+        lastAdditionalError = id
+        let alert = UIAlertController(title:"Additional stream unavailable",message:message,preferredStyle:.alert)
+        alert.addAction(UIAlertAction(title:"OK",style:.default))
+        if let presented = presentedViewController {
+            presented.dismiss(animated:true) { [weak self] in self?.present(alert,animated:true) }
+        } else { present(alert,animated:true) }
+    }
     init(badge: PlayerQualityOverlay) {
         self.badge = badge
         super.init(nibName: nil, bundle: nil)
@@ -410,6 +575,10 @@ final class PlayerContainerViewController: UIViewController, UIGestureRecognizer
         infoVisible ? [infoController] : [playerController]
     }
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive press: UIPress) -> Bool {
+        if gestureRecognizer === backGesture, presentedViewController != nil {
+            backExitArmed = true
+            return false // Native Back dismisses the stream menu/error first.
+        }
         if gestureRecognizer === backGesture, infoVisible { return true }
         if gestureRecognizer === backGesture, !backExitArmed, controlsVisible {
             // Leave the first press to AVKit. Do not tear down/recreate its
@@ -685,14 +854,14 @@ struct PlayerLayoutValidationView: View {
             try? await Task.sleep(nanoseconds: 3_000_000_000)
             let metadata = model.player.currentItem?.externalMetadata ?? []
             let info = try? await metadata.first { $0.identifier == .commonIdentifierDescription }?.load(.stringValue)
-            let values: [String: Any] = ["info": info ?? "", "metadataCount": metadata.count, "status": model.status, "error": model.error ?? "", "quality": model.qualityBadge ?? "", "time": model.player.currentTime().seconds]
+            let values: [String: Any] = ["info": info ?? "", "metadataCount": metadata.count, "status": model.status, "error": model.error ?? "", "quality": model.qualityBadge ?? "", "time": model.player.currentTime().seconds.isFinite ? model.player.currentTime().seconds : 0]
             let file = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("Player-state-validation.json")
             if let data = try? JSONSerialization.data(withJSONObject: values) { try? data.write(to: file, options: .atomic) }
             if ProcessInfo.processInfo.environment["BEEB_PLAYER_INFO_STRESS"] == "1" {
                 for tick in 1...180 {
                     try? await Task.sleep(nanoseconds: 1_000_000_000)
                     guard !Task.isCancelled else { return }
-                    let pulse: [String: Any] = ["tick": tick, "time": model.player.currentTime().seconds, "layoutPasses": PlayerQualityOverlay.layoutPassCount, "error": model.error ?? ""]
+                    let pulse: [String: Any] = ["tick": tick, "time": model.player.currentTime().seconds.isFinite ? model.player.currentTime().seconds : 0, "layoutPasses": PlayerQualityOverlay.layoutPassCount, "error": model.error ?? ""]
                     if let data = try? JSONSerialization.data(withJSONObject: pulse) { try? data.write(to: file.deletingLastPathComponent().appendingPathComponent("Info-heartbeat.json"), options: .atomic) }
                 }
             }

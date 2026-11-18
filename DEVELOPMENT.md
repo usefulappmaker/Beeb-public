@@ -22,7 +22,7 @@ For public distribution, build in a neutral path outside your personal account d
 python3 scripts/check-unsigned-ipa.py build/BeebHD-unsigned.ipa
 ```
 
-The prebuilt release asset is named Beeb-0.10.7-public-unsigned.ipa and is distributed separately from the source ZIP with a SHA-256 checksum. The structural check cannot detect every possible identifying string; perform an additional private-identifier audit before publishing.
+The prebuilt release asset is named Beeb-0.10.8-public-unsigned.ipa and is distributed separately from the source ZIP with a SHA-256 checksum. The structural check cannot detect every possible identifying string; perform an additional private-identifier audit before publishing.
 
 ## Signed archive
 
@@ -44,6 +44,8 @@ Keep generated archives and signing profiles out of the public repository.
 ./test-catalogue.sh
 ./test-uhd.sh
 ./test-dash.sh
+./test-live-channels.sh
+./test-live-uhd.sh
 python3 Tests/test_public_release.py
 .venv-setup/bin/python Tests/test_setup_helper.py
 ```
@@ -66,3 +68,7 @@ The source ZIP is created under dist/. No upload is performed. See PUBLIC-RELEAS
 ## Live Top Shelf
 
 `BeebTopShelf` is embedded in BeebHD. Set `BEEB_APP_BUNDLE_IDENTIFIER` when overriding signing identifiers, rather than overriding `PRODUCT_BUNDLE_IDENTIFIER` for every target. The main app and extension must have distinct identifiers sharing the main app prefix. `build.sh` handles this through the existing `BEEB_BUNDLE_ID` option. The extension refreshes its public BBC channel/schedule snapshot at most every ten minutes when tvOS requests content. It stores no credentials or stream URLs and uses no App Group. `test-live-channels.sh` checks routing and artwork parsing. Select and Play/Pause use the same `beeb://live/<channel-id>` route.
+
+## UHD setup in 0.10.9
+
+The UI uses native on-device configuration download, validation and identity packaging. No additional Python dependency is required by app users. The older scripts/setup-uhd.py protocol implementation and its tests remain for source/history compatibility; the app no longer offers manual helper URL entry. setup-uhd.command directs users to Settings → Enable BBC UHD.

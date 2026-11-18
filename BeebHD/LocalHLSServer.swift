@@ -8,7 +8,11 @@ final class LocalHLSServer: @unchecked Sendable {
     private let queue = DispatchQueue(label: "org.beebplayer.Beeb.local-hls")
     private var listener: NWListener?
     private var connections = [ObjectIdentifier: NWConnection]()
+    private var resources = [ObjectIdentifier: Task<Void, Never>]()
+    private var resourceHandler: (@Sendable (String) async throws -> Data?)?
     private var downloads = [ObjectIdentifier: URLSessionDataTask]()
+    private var playlists = [String: Data]()
+    private var media = [String: URL]()
     private let session: URLSession
     init(configuration: URLSessionConfiguration = .ephemeral) {
         configuration.timeoutIntervalForRequest = 30
@@ -16,10 +20,11 @@ final class LocalHLSServer: @unchecked Sendable {
         configuration.urlCache = nil
         session = URLSession(configuration: configuration)
     }
-    func start(playlists: [String: Data], media: [String: URL] = [:]) async throws -> URL {
+    func start(playlists: [String: Data], media: [String: URL] = [:], resourceHandler: (@Sendable (String) async throws -> Data?)? = nil) async throws -> URL {
         try await withCheckedThrowingContinuation { continuation in
             queue.async {
                 do {
+                    self.playlists = playlists; self.media = media; self.resourceHandler = resourceHandler
                     let parameters = NWParameters.tcp
                     parameters.requiredLocalEndpoint = .hostPort(host: "127.0.0.1", port: .any)
                     let listener = try NWListener(using: parameters, on: .any)
@@ -44,23 +49,24 @@ final class LocalHLSServer: @unchecked Sendable {
                             case .cancelled, .failed:
                                 self.connections.removeValue(forKey: id)
                                 self.downloads.removeValue(forKey: id)?.cancel()
+                                self.resources.removeValue(forKey: id)?.cancel()
                             default: break
                             }
                         }
                         connection.start(queue: self.queue)
-                        self.receive(connection, playlists: playlists, media: media, prefix: prefix, accumulated: Data())
+                        self.receive(connection, prefix: prefix, accumulated: Data())
                     }
                     listener.start(queue: self.queue)
                 } catch { continuation.resume(throwing: error) }
             }
         }
     }
-    private func receive(_ connection: NWConnection, playlists: [String: Data], media: [String: URL], prefix: String, accumulated: Data) {
+    private func receive(_ connection: NWConnection, prefix: String, accumulated: Data) {
         connection.receive(minimumIncompleteLength: 1, maximumLength: 8192) { data, _, complete, error in
             var received = accumulated; if let data { received.append(data) }
             guard error == nil, received.count <= 16384 else { connection.cancel(); return }
             guard received.range(of: Data("\r\n\r\n".utf8)) != nil else {
-                if complete { connection.cancel() } else { self.receive(connection, playlists: playlists, media: media, prefix: prefix, accumulated: received) }; return
+                if complete { connection.cancel() } else { self.receive(connection, prefix: prefix, accumulated: received) }; return
             }
             let lines = String(decoding: received, as: UTF8.self).components(separatedBy: "\r\n")
             let request = lines.first?.split(separator: " ") ?? []
@@ -68,9 +74,9 @@ final class LocalHLSServer: @unchecked Sendable {
             let key = path.hasPrefix(prefix + "/") ? String(path.dropFirst(prefix.count)) : ""
             let range = lines.first { $0.lowercased().hasPrefix("range:") }.map { String($0.dropFirst(6)).trimmingCharacters(in: .whitespaces) }
             guard method == "GET" || method == "HEAD" else { self.send(connection, status: "405 Method Not Allowed", data: Data(), type: "text/plain"); return }
-            if let body = playlists[key] {
+            if let body = self.playlists[key] {
                 self.send(connection, data: body, type: key.hasSuffix(".vtt") ? "text/vtt; charset=utf-8" : "application/vnd.apple.mpegurl", head: method == "HEAD", range: range)
-            } else if let remote = media[key], remote.scheme == "https" {
+            } else if let remote = self.media[key], remote.scheme == "https" {
                 let id = ObjectIdentifier(connection)
                 let task = self.session.dataTask(with: remote) { data, response, error in
                     self.queue.async {
@@ -89,6 +95,19 @@ final class LocalHLSServer: @unchecked Sendable {
                     }
                 }
                 self.downloads[id] = task; task.resume()
+            } else if !key.isEmpty, let handler = self.resourceHandler {
+                let id = ObjectIdentifier(connection)
+                self.resources[id] = Task {
+                    let body = try? await handler(key)
+                    guard !Task.isCancelled else { return }
+                    self.queue.async {
+                        self.resources.removeValue(forKey: id)
+                        guard self.connections[id] != nil else { return }
+                        if let body {
+                            self.send(connection, data: body, type: key.hasSuffix(".vtt") ? "text/vtt; charset=utf-8" : "application/vnd.apple.mpegurl", head: method == "HEAD", range: range)
+                        } else { self.send(connection, status: "404 Not Found", data: Data(), type: "text/plain") }
+                    }
+                }
             } else { self.send(connection, status: "404 Not Found", data: Data(), type: "text/plain") }
         }
     }
@@ -121,10 +140,15 @@ final class LocalHLSServer: @unchecked Sendable {
         else { guard let value = Int(pieces[1]), value >= start else { return nil }; end = min(count - 1, value) }
         return start..<end+1
     }
+    func update(playlists: [String: Data], media: [String: URL]) {
+        queue.async { self.playlists = playlists; self.media = media }
+    }
     func stop() {
         queue.async {
             self.listener?.newConnectionHandler = nil
             self.listener?.cancel(); self.listener = nil
+            self.playlists.removeAll(); self.media.removeAll(); self.resourceHandler = nil
+            for task in self.resources.values { task.cancel() }; self.resources.removeAll()
             for task in self.downloads.values { task.cancel() }; self.downloads.removeAll()
             for connection in self.connections.values { connection.cancel() }; self.connections.removeAll()
         }

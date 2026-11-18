@@ -6,31 +6,24 @@ struct UHDCategoryView: View {
     @ObservedObject var catalogue: CatalogueStore
     @ObservedObject var library: Library
     @Environment(\.scenePhase) private var phase
-    @State private var page = 1
     private var shows: [CatalogueShow] { index.uhd }
-    private var pages: Int { max(1, (shows.count + 29) / 30) }
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
                 Text("4K UHD").font(.largeTitle).bold()
                 if let error = index.error { Text(error).font(.callout).foregroundStyle(.orange) }
-                HStack(spacing: 24) {
-                    Button("Previous") { page -= 1 }.disabled(page <= 1)
-                    Text("Page \(min(page, pages)) of \(pages) · \(shows.count) programmes").font(.callout)
-                    Button("Next") { page += 1 }.disabled(page >= pages)
+                HStack {
+                    Text("\(shows.count) programmes").font(.callout).foregroundStyle(.secondary)
                     Spacer()
                     Button { index.requestRefresh() } label: {
-                        HStack {
-                            if index.loading { ProgressView() }
-                            Text("Check for updates")
-                        }
-                    }.disabled(index.loading)
+                        Label("Check for updates", systemImage:"arrow.clockwise")
+                    }.disabled(index.loading).rememberSidebarFocus()
                 }
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 330), spacing: 28)], spacing: 30) {
-                    ForEach(Array(shows.dropFirst((min(page, pages) - 1) * 30).prefix(30))) { show in
+                    ForEach(shows) { show in
                         NavigationLink { CatalogueShowView(show: show, catalogue: catalogue, library: library, preferUHDSeries: true) } label: {
                             ShowCard(show: show)
-                        }.buttonStyle(ProgrammeCardStyle())
+                        }.buttonStyle(ProgrammeCardStyle()).rememberSidebarFocus()
                     }
                 }
                 if shows.isEmpty && !index.loading { Text("No UHD listings are currently saved. Check for updates to retry.") }
@@ -59,18 +52,26 @@ struct CatalogueSearchView: View {
                         Text("\(results.count) \(results.count == 1 ? "result" : "results")").font(.title3)
                         Spacer()
                         if pages > 1 {
-                            Button("Previous") { page -= 1 }.disabled(page <= 1)
+                            Button("Previous") { page -= 1 }.disabled(page <= 1).rememberSidebarFocus()
                             Text("\(min(page, pages)) / \(pages)")
-                            Button("Next") { page += 1 }.disabled(page >= pages)
+                            Button("Next") { page += 1 }.disabled(page >= pages).rememberSidebarFocus()
                         }
                     }
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 330), spacing: 28)], spacing: 30) {
                         ForEach(Array(results.dropFirst((min(page, pages) - 1) * 30).prefix(30))) { show in
-                            NavigationLink { CatalogueShowView(show: show, catalogue: catalogue, library: library) } label: { ShowCard(show: show) }.buttonStyle(ProgrammeCardStyle())
+                            NavigationLink { CatalogueShowView(show: show, catalogue: catalogue, library: library) } label: { ShowCard(show: show) }.buttonStyle(ProgrammeCardStyle()).rememberSidebarFocus()
                         }
                     }
                     if searching { ProgressView("Searching…") }
                     else if results.isEmpty { Text("No results.") }
+                    if pages > 1 {   // pager at the bottom too
+                        HStack(spacing: 24) {
+                            Spacer()
+                            Button("Previous") { page -= 1 }.disabled(page <= 1)
+                            Text("\(min(page, pages)) / \(pages)")
+                            Button("Next") { page += 1 }.disabled(page >= pages)
+                        }.padding(.top, 20)
+                    }
                 }
             }.padding(60)
         }

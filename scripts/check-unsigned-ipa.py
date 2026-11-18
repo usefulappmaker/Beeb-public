@@ -26,7 +26,7 @@ def inspect(path):
                 failures.append('Signing material or platform metadata present.')
             data = archive.read(item)
             patterns = [rb'/(?:Users|home)/[A-Za-z0-9_.-]+/',
-                        rb'-----BEGIN (?:RSA |EC |ENCRYPTED )?PRIVATE KEY-----',
+                        rb'-----BEGIN (?:RSA |EC |ENCRYPTED )?PRIVATE KEY-----[ \t\r\n]+[A-Za-z0-9+/]{32,}',
                         rb'Apple Development:', rb'iPhone Developer:']
             if any(re.search(pattern, data) for pattern in patterns):
                 failures.append('Personal path, private key or developer identity marker present.')
@@ -35,10 +35,22 @@ def inspect(path):
             failures.append('App is not built for physical tvOS devices.')
         if info.get('CFBundleIdentifier') != 'org.beebplayer.Beeb':
             failures.append('App does not have the public template bundle identifier.')
-        data = archive.read(prefix + info['CFBundleExecutable'])
-        if data[:4] != b'\xcf\xfa\xed\xfe' or len(data) < 32:
-            failures.append('Expected a 64-bit little-endian device executable.')
-        else:
+        extension_prefix = prefix + 'PlugIns/BeebTopShelf.appex/'
+        expected = [(prefix, 'org.beebplayer.Beeb'), (extension_prefix, 'org.beebplayer.Beeb.TopShelf')]
+        for bundle_prefix, identifier in expected:
+            bundle_info = plistlib.loads(archive.read(bundle_prefix + 'Info.plist'))
+            if bundle_info.get('CFBundleIdentifier') != identifier:
+                failures.append('Unexpected app or Top Shelf bundle identifier.')
+            if bundle_info.get('CFBundleSupportedPlatforms') != ['AppleTVOS']:
+                failures.append('App or Top Shelf extension is not physical tvOS.')
+            if (bundle_info.get('CFBundleShortVersionString'), bundle_info.get('CFBundleVersion')) != (info.get('CFBundleShortVersionString'), info.get('CFBundleVersion')):
+                failures.append('App and Top Shelf version/build do not match.')
+            if 'TEST' in bundle_info.get('CFBundleDisplayName', '').upper():
+                failures.append('TEST display branding remains in public app.')
+            data = archive.read(bundle_prefix + bundle_info['CFBundleExecutable'])
+            if data[:4] != b'\xcf\xfa\xed\xfe' or len(data) < 32:
+                failures.append('Expected a 64-bit little-endian device executable.')
+                continue
             if struct.unpack_from('<I', data, 4)[0] != 0x0100000c:
                 failures.append('Expected arm64 architecture.')
             offset = 32
@@ -48,10 +60,18 @@ def inspect(path):
                     failures.append('Invalid executable load command.')
                     break
                 if command == 0x1d:
-                    failures.append('Executable still contains a code signature.')
+                    failures.append('App or Top Shelf executable still contains a code signature.')
                 if command == 0x2c and struct.unpack_from('<I', data, offset + 16)[0] != 0:
                     failures.append('Executable is encrypted.')
                 offset += size
+        if info.get('CFBundleDisplayName') != 'Beeb':
+            failures.append('Expected the public Beeb display name.')
+        schemes = [scheme for kind in info.get('CFBundleURLTypes', []) for scheme in kind.get('CFBundleURLSchemes', [])]
+        if schemes != ['beeb']:
+            failures.append('Expected the public live-channel URL scheme.')
+        extension = plistlib.loads(archive.read(extension_prefix + 'Info.plist'))
+        if extension.get('NSExtension', {}).get('NSExtensionPointIdentifier') != 'com.apple.tv-top-shelf':
+            failures.append('Expected the Top Shelf extension point.')
         if archive.testzip() is not None:
             failures.append('Archive integrity check failed.')
     return sorted(set(failures))
@@ -69,7 +89,7 @@ def main():
         print('FAIL: ' + failure)
     if failures:
         return 1
-    print('PASS: public-template arm64 tvOS app; no code signature/profile or detected personal-path/private-key markers. This is not an exhaustive privacy audit.')
+    print('PASS: matching public Beeb app + Top Shelf; arm64 tvOS; no code signature/profile or detected personal-path/private-key markers. This is not an exhaustive privacy audit.')
     return 0
 
 

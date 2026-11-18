@@ -19,6 +19,7 @@ struct LiveProgramme: Codable, Hashable {
     let subtitle: String
     let image: URL?
     let end: Date
+    var start: Date? = nil   // for the progress bar
 }
 struct LiveChannel: Codable, Identifiable, Hashable {
     let id: String
@@ -147,7 +148,7 @@ struct DiscoveryAPI {
                   start <= now, now < end, broadcast["blanked"] as? Bool != true,
                   let episode = broadcast["episode"] as? [String: Any], let title = episode["title"] as? String else { continue }
             return LiveProgramme(title: title, subtitle: episode["subtitle"] as? String ?? "",
-                image: CatalogueAPI.programmeImage(episode["images"]), end: end)
+                image: CatalogueAPI.programmeImage(episode["images"]), end: end, start: start)
         }
         return nil
     }
@@ -179,7 +180,7 @@ struct DiscoveryAPI {
                 for url in selector.urls {
                     let manifest = String(decoding: try await fetch(url), as: UTF8.self)
                     if manifest.hasPrefix("#EXTM3U"), !BBCService.variants(manifest, base: url).isEmpty {
-                        return PlaybackSource(url: url, requested1080: false)
+                        return PlaybackSource(url: url, requested1080: false, liveCaptionTemplates: selector.liveCaptionTemplates)
                     }
                 }
                 if let message = selector.error { throw BBCError.message(message) }

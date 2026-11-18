@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import Foundation
 
-private final class DASHNode {
+final class DASHNode {
     let name: String
     let attributes: [String: String]
     var text = ""
@@ -9,7 +9,7 @@ private final class DASHNode {
     init(_ name: String, _ attributes: [String: String]) { self.name = name; self.attributes = attributes }
     func child(_ name: String) -> DASHNode? { children.first { $0.name == name } }
 }
-private final class DASHXML: NSObject, XMLParserDelegate {
+final class DASHXML: NSObject, XMLParserDelegate {
     var root: DASHNode?
     var stack: [DASHNode] = []
     func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String: String]) {

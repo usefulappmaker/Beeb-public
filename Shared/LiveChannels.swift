@@ -86,3 +86,14 @@ enum RegionalChannels {
         return selected
     }
 }
+
+/// Curated event services; do not enumerate unadvertised stream numbers.
+struct AdditionalLiveStream: Identifiable {
+    let id: String
+    let title: String
+    static let all = [
+        AdditionalLiveStream(id: "red_button_one", title: "Red Button"),
+        AdditionalLiveStream(id: "uk_bbc_stream_041", title: "Red Button UHD")
+    ]
+    static let uhdManifest = URL(string: "https://ve-uhd-push-uk-live.akamaized.net/x=4/i=urn:bbc:pips:service:uk_bbc_stream_041/iptv_uhd_v1.mpd")!
+}

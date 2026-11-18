@@ -1,0 +1,14 @@
+# Build and run from the sync-server folder:   docker compose -f standalone/docker-compose.yml up -d --build
+services:
+  beeb-sync:
+    build:
+      context: ..
+      dockerfile: standalone/Dockerfile
+    container_name: beeb-sync
+    restart: unless-stopped
+    ports:
+      - "8765:8765"
+    environment:
+      BEEB_SYNC_KEY: "change-me-to-a-long-random-key"
+    volumes:
+      - ./data:/data

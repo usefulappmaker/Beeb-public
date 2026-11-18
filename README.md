@@ -6,37 +6,103 @@
 
 **An independent BBC player for Apple TV, with 4K HLG HDR and Apple's native playback controls.**
 
-Beeb is a native SwiftUI app for **tvOS 17 and later**. Browse BBC programmes, watch live television, save shows and pick up where you left off. When a compatible UHD version and your own UHD setup are available, Beeb plays the original 4K HLG stream without video transcoding.
+Beeb is a native SwiftUI app for **tvOS 17 and later**. Browse BBC programmes, watch live television, save shows and pick up where you left off. When a compatible UHD version and UHD setup is connected, Beeb plays the original 4K HLG stream without video transcoding.
 
 This is an unofficial project, not produced or endorsed by the BBC. Choose **source code** to build with Xcode, or the **prebuilt unsigned IPA** to sign locally without compiling Beeb. Both require your own Apple signing account and device provisioning. There is no App Store/TestFlight release or universally installable signed IPA.
 
-[Install from source](#install-on-apple-tv) · [Install the unsigned IPA](INSTALL-IPA.md) · [Set up UHD with TwinVine](#optional-4k-hlg-setup-with-twinvine) · [Troubleshooting](TROUBLESHOOTING.md)
+[Install from source](#install-on-apple-tv) · [Install the unsigned IPA](INSTALL-IPA.md) · [Enable BBC UHD](#enable-bbc-uhd) · [Troubleshooting](TROUBLESHOOTING.md)
 
-![Beeb homepage with programme discovery and Continue Watching](docs/screenshots/home.png)
+## About this fork
 
-*Screenshots are from the [original Reddit announcement](https://www.reddit.com/r/iplayer/comments/1x7kzsi/i_built_beeb_an_unofficial_apple_tv_bbc_player/). They show an earlier build; the current public version uses homepage banners without logos and episode-specific thumbnails where available.*
+This is a community fork of [usefulappmaker/Beeb-public](https://github.com/usefulappmaker/Beeb-public), based on
+0.10.9 (build 40). It adds:
 
-**Current prepared release: 0.10.7 (build 28).** See [changes since 0.8.2](CHANGELOG.md).
+- **Profiles:** each person gets their own Continue Watching and Saved list. Add, rename and remove profiles in
+  **Settings › Profiles**; switch with the profile button at the end of the top bar ("Who's watching?").
+  Choose what happens on launch: last used, a fixed profile, or ask.
+- **Kids mode:** mark a profile as a kids profile for CBeebies/CBBC only, no programmes with BBC guidance
+  warnings, and no Search, Browse, 4K or Settings. An optional PIN is needed to switch to another profile.
+- **Household sync (optional, self-hosted):** share profiles, Continue Watching, Saved and the kids PIN between
+  your Apple TVs through a server you run — a Home Assistant (AppDaemon) app or a standalone Python/Docker server.
+  Off until you enter a server in **Settings › Household sync**. See [docs/SYNC.md](docs/SYNC.md).
+- **Channels page** (formerly Live) in the style of the official Channels page: a strip of channel wordmarks, an ON NOW
+  card with progress, the channel's featured programmes and themed rows.
+- **Watch live TV from the start:** *Watch from start* and *Live* buttons in the player (live TV now shows the real time of day) (BBC keeps about
+  two hours), and an optional prompt — **Settings › Offer watch from start for live TV** — that asks "from the
+  start or live?" when you open a channel part-way through a programme.
+- **Interface polish:** a clear Play/Resume button, cards that lift on focus, medium-length synopses with an
+  inline More, a 3–4 column episode grid with the newest series first, series tabs, a show-page
+  "Start watching/Resume" button, Continue Watching progress lines, smaller Settings and page controls at the
+  bottom of long lists.
+- **Renew tooling** for free Apple accounts (7-day signing): rebuild and reinstall on all your Apple TVs, or
+  automatically from an always-on Mac. See [tools/renew/README.md](tools/renew/README.md).
+
+Installation is the same as upstream (below). The fork is unofficial, like Beeb itself, and keeps Beeb's
+GPL-3.0-or-later licence; credit for Beeb goes to its original author.
+
+![Beeb Modern Sidebar homepage](docs/screenshots/modern-sidebar.png)
+
+*The homescreen and Settings captures show the native 0.10.8 interface using cached BBC listings and artwork. The older playback screenshots below are from the [original Reddit announcement](https://www.reddit.com/r/iplayer/comments/1x7kzsi/i_built_beeb_an_unofficial_apple_tv_bbc_player/); current playback quality badges read 4K, FHD, HD or SD.*
+
+**Current release: 0.10.9 hotfix (build 40).** See [the changelog](CHANGELOG.md).
+
+## Hotfix 0.10.9
+
+Changes since **0.10.8**:
+
+- **One-step UHD setup:** open **Settings → Enable BBC UHD** and select **Enable BBC UHD**. Setup runs entirely on Apple TV; no separate computer, downloader, Python installation, helper or copied setup URL is needed.
+- **Check before connecting:** Beeb validates the downloaded configuration and checks for a compatible BBC 4K HLG stream before saving the identity securely in the device-only Keychain. Cancelling or a failed check keeps your existing setup.
+- **Modern Topbar focus fixed:** pressing Down from any Home topbar heading goes directly to **Watch now**, without first jumping through a programme card. Returning Up to navigation is more reliable across pages.
+- **Sidebar shortcuts:** press Left at the left edge of a row or control to open the sidebar. Close it with Right, Back or the current section to return to the same item and scroll position.
+- **Saved is easier to reach:** pressing Up from any episode in the first row reaches the programme's bookmark, including programmes with several series.
+- **More reliable controls:** Browse and homescreen-layout options use native SwiftUI buttons with individual focus targets. Move between choices with Left/Right and click to select.
+- **Cleaner Live page:** removed the explanatory quality line below the heading.
+- **Simpler setup screen:** removed manual helper setup and setup-URL entry. Updated installation and UHD instructions for the new flow.
+
+
+## Features introduced in 0.10.8
+
+- **Homescreen Layout:** choose Classic or Modern in Settings. Modern offers a floating Topbar or a Sidebar, and remembers your navigation choice when you switch layouts.
+- **Modern homescreens:** large programme artwork, pink focus accents and navigation that scrolls away with the banner as you browse the rows below.
+- **Cleaner Browse:** readable icon-led category cards and continuous browsing through categories and A–Z; 4K UHD cards also appear in one lazy grid. No Previous/Next controls for those listings.
+- **RED additional streams:** a RED action in every live player opens Red Button or Red Button UHD. Event feeds depend on BBC availability; an unavailable feed leaves your current channel playing.
+- **Live subtitles:** BBC's separate live timed-text feed is exposed through Apple's native subtitle controls. Captions use the stream's timing, including when seeking back. Confirmed working on Apple TV by the maintainer.
+- **Better Back navigation:** return to the previous programme/menu screen, close the sidebar, or dismiss Additional Streams without choosing another channel. The dialog also offers Cancel.
+- **More reliable episode loading:** updated BBC episode discovery and version selection for both HD and UHD playback.
+
+![Homescreen Layout options in Settings](docs/screenshots/homescreen-settings.png)
+
+<details>
+<summary>Classic, Modern Topbar and redesigned Browse</summary>
+
+![Classic homescreen](docs/screenshots/classic-home.png)
+
+![Modern Topbar homescreen](docs/screenshots/modern-topbar.png)
+
+![Readable native categories](docs/screenshots/browse-categories.png)
+
+</details>
 
 ## What Beeb can do
 
 | Feature | How it works |
 | --- | --- |
-| **4K HLG HDR playback** | Plays compatible BBC UHD episodes using the original encoded video, audio and HLG metadata. Requires Apple TV 4K, a compatible display connection and optional TwinVine setup. |
+| **4K HLG HDR playback** | Plays compatible BBC UHD episodes using the original encoded video, audio and HLG metadata. Requires Apple TV 4K, a compatible display connection and optional Enable BBC UHD setup. |
 | **Automatic quality selection** | The pink logo Play button tries compatible UHD first, then the best available HD/SD stream if UHD is unavailable or not configured. |
 | **Programme Info** | The Info button shows the title, episode subtitle, programme thumbnail, full synopsis, running time, original BBC broadcast date and guidance where supplied. A bounded description layout avoids a tvOS native-summary crash. Back hides Info or player controls; a second press exits playback immediately. |
 | **Playback speed** | Native on-demand speed menu beside Info, with 0.5×, 0.75×, 1×, 1.25×, 1.5× and 2× options. Live channels keep normal speed. |
 | **Regional channels** | Settings offers 16 BBC One regions and three BBC Two feeds. The chosen feed plays from Live or a Top Shelf channel card. Top Shelf artwork uses the default channel schedule. |
-| **Native English subtitles** | BBC TTML captions become a proper HLS WebVTT track. Apple's player handles rendering, Off/English selection and subtitle appearance. |
+| **Native English subtitles** | BBC TTML captions become a proper HLS WebVTT track for on-demand and supported live feeds. Apple's player handles rendering, selection and subtitle appearance. Live captions depend on BBC supplying a compatible timed-text feed. |
 | **Subtitles after skipping back** | With Apple's **Show on Skip Back** setting enabled on supported tvOS versions, skipping back 10 seconds can temporarily show captions. This behaviour has been checked on Apple TV. |
 | **Skip intro and recap** | Native contextual buttons use BBC-supplied timings matched to the version actually playing. Buttons appear only during a supplied skip interval. |
 | **Received-quality badge** | Shows an outlined 4K, FHD, HD or SD badge beside the episode metadata in the playback controls. The 4K label requires a received picture of at least 2160p; it does not infer HDR from BBC catalogue flags. |
 | **4K UHD category** | A saved UHD listing is available immediately. Beeb refreshes BBC’s UHD webpage daily, keeps cached discoveries, and checks episode-level availability when you open a programme. No full-catalogue episode scan. |
 | **Search** | Search the full cached BBC programme catalogue by title and synopsis using the native Apple TV keyboard, iPhone keyboard or Siri Remote dictation where supported. |
 | **Continue Watching and Up next** | Saves progress locally across launches. Resume an episode, start over, remove a show from the row or open the next episode after completion. |
-| **Programme discovery** | Featured programmes, categories, A–Z browsing, series selectors and ordered episode lists. Episode pages load when needed rather than indexing the whole catalogue at launch. |
+| **Programme discovery** | Featured programmes, readable categories, continuous category/A–Z browsing, series selectors and ordered episode lists. Episodes load on demand rather than indexing the whole catalogue at launch. |
 | **Saved programmes** | Bookmark a show and open its current available episodes later. |
 | **Live channels on Top Shelf** | Move Beeb to the home screen’s top row, press Up to its landscape channel cards, then Select to start that channel directly. Play/Pause starts it too. Current programme artwork is cached, with a channel card fallback. |
+| **RED additional streams** | During live TV, select RED beside Info to open Red Button or Red Button UHD. An unavailable additional feed leaves the current channel playing. The curated UHD event feed uses a rolling DASH-to-HLS bridge on Apple TV, without video transcoding, and is only available when BBC supplies a compatible live HLG event. It is separate from catch-up UHD setup. |
 | **Live television** | BBC channel tiles show the scheduled programme's title and artwork. Live quality and subtitles depend on the supplied feed. |
 | **Artwork suited to each view** | Plain promotional images for homepage banners, individual episode stills for episode cards, programme artwork for show listings, and clickable portrait-only posters in Stream Every Episode. Larger homepage cards omit redundant action text. |
 
@@ -62,7 +128,7 @@ This is an unofficial project, not produced or endorsed by the BBC. Choose **sou
 ### Choose your download
 
 - **Public source ZIP:** build and sign through Xcode using the steps below.
-- **Beeb-0.10.7-public-unsigned.ipa:** a prebuilt arm64 tvOS app, intended as a separate GitHub Release asset with a SHA-256 file. **Requires your own signing before installation.** Follow [the IPA signing/install guide](INSTALL-IPA.md). It contains no provisioning profile, developer signature or UHD identity.
+- **Beeb-0.10.9-public-unsigned.ipa:** a prebuilt arm64 tvOS app, intended as a separate GitHub Release asset with a SHA-256 file. **Requires your own signing before installation.** Follow [the IPA signing/install guide](INSTALL-IPA.md). It contains no provisioning profile, developer signature or UHD identity.
 
 Download the **[unsigned IPA and matching source ZIP from GitHub Releases](https://github.com/usefulappmaker/Beeb-public/releases/latest)**. The source ZIP intentionally excludes compiled binaries; the IPA is a separate release download.
 
@@ -73,7 +139,7 @@ Download the **[unsigned IPA and matching source ZIP from GitHub Releases](https
 - An **Apple TV HD or Apple TV 4K running tvOS 17+**, on the same local network as your Mac.
 - Access to BBC services. Availability and service restrictions still apply.
 
-**HD and live TV do not require TwinVine.** For UHD, also use Apple TV 4K, an HLG-compatible display/HDMI connection, suitable BBC content and your own working TwinVine iP configuration.
+**Ordinary HD and live TV need no optional UHD setup.** For UHD, use Apple TV 4K, an HLG-compatible display/HDMI connection and suitable BBC content, then choose **Enable BBC UHD** in Settings. No separate computer is needed for that setup step.
 
 ### Build, sign and run
 
@@ -89,72 +155,21 @@ A free **Personal Team** requires periodic reprovisioning and has seven-day limi
 
 For pairing details, update instructions and signing errors, see the full [installation guide](INSTALL.md). This source-install route requires a Mac; an unsigned IPA cannot simply be opened on Apple TV.
 
-## Optional 4K HLG setup with TwinVine
+## Enable BBC UHD
 
-**TwinVine is used for the one-time UHD authentication setup. After connecting, the Mac is not needed for playback.** Beeb fetches streams directly on Apple TV.
+1. Open **Beeb → Settings → Enable BBC UHD**.
+2. Select **Enable BBC UHD** and wait for the configuration download and BBC 4K stream check.
+3. When **UHD identity connected** appears, open an available UHD-listed episode and play it. The player's **4K** badge confirms received 2160p video; catalogue labels alone do not guarantee UHD playback.
 
-### 1. Prepare your own TwinVine iP configuration
+No Mac, Windows computer, Python, downloader, local server or copied setup URL is needed for this step. App signing and installation are separate: see [INSTALL-IPA.md](INSTALL-IPA.md) or [INSTALL.md](INSTALL.md).
 
-Follow the upstream [TwinVine installation and configuration instructions](https://github.com/vinefeeder/TwinVine#installation), including initialising its **iP** service. You need your own working configuration containing a usable client certificate/private key and its configured User-Agent. Installing TwinVine alone does not guarantee that UHD access is available.
+Beeb downloads the upstream configuration over HTTPS, validates the certificate/key pair and validity period, packages it natively, and checks BBC access before storing the identity in the device-only Keychain. Playback then runs directly from BBC to Apple TV. Existing connections remain usable when updating with the same app identifier/team; reconnect only if needed. Cancelling or failed setup preserves the previous identity.
 
-No client identity, private key or shared account is supplied in Beeb. Do not upload your TwinVine configuration or ask another installer to share theirs.
-
-### 2. Prepare the Beeb setup helper
-
-Install **Python 3.10+** if needed. In Terminal, open the extracted Beeb folder and run:
-
-```sh
-chmod +x ./*.sh ./*.command scripts/*.py
-python3 -m venv .venv-setup
-.venv-setup/bin/python -m pip install -r scripts/requirements-setup.txt
-```
-
-This installs the helper's dependencies into a local virtual environment.
-
-### 3. Check your configuration
-
-For TwinVine installed at `~/TwinVine`:
-
-```sh
-./setup-uhd.command --check
-```
-
-For a different installation folder:
-
-```sh
-TWINVINE_DIR="$HOME/Apps/TwinVine" ./setup-uhd.command --check
-```
-
-Replace the example path with your own. The helper supports direct and remote-repository iP service layouts. If discovery fails or finds multiple configurations, supply the exact file:
-
-```sh
-./setup-uhd.command --config "$HOME/Apps/TwinVine/packages/envied/src/envied/services/iP/config.yaml" --check
-```
-
-This check validates the local configuration and matching certificate/key without starting a server or displaying credentials. Only a real playback request can establish whether BBC currently accepts the identity.
-
-### 4. Transfer setup to Apple TV
-
-1. Run the same helper command **without `--check`**, keeping any custom path arguments. For the default location:
-
-   ```sh
-   ./setup-uhd.command
-   ```
-
-2. Leave Terminal open. It prints a complete one-time HTTPS setup URL, normally valid for 15 minutes. Keep it private and do not open it in a browser.
-3. In **Beeb → Settings → 4K HLG · TwinVine**, focus **One-time setup URL** and enter the complete link. The iPhone Apple TV Remote keyboard is a convenient way to paste it.
-4. Choose **Connect TwinVine** and allow local-network access if asked.
-5. Wait for **UHD identity connected**. The helper stops after transfer; the Mac can now be switched off.
-
-The transfer uses pinned TLS. Beeb retains the setup package and metadata in device-only Keychain storage. Never share the setup URL: it contains the one-use token needed to retrieve the identity.
-
-### 5. Check UHD playback
-
-Choose a currently available UHD-listed episode and press Play. Show the player controls and check for **4K**. A catalogue badge describes advertised availability; the playback badge reflects the received stream. If UHD is unavailable or your identity is not accepted, Beeb can fall back to HD.
-
-For local-network/interface problems, explicit config paths, expired links and identity renewal, follow [SETUP-UHD.md](SETUP-UHD.md) and [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+For requirements, the configuration source and renewal/removal, see [SETUP-UHD.md](SETUP-UHD.md). No UHD identity is bundled in the source ZIP or IPA.
 
 ## Catalogue updates and 4K browsing
+
+Use **Settings → Display 4K UHD category** to show or hide this category in the topbar/sidebar and Browse. It is enabled by default and does not change UHD setup or playback quality.
 
 Open **Browse → Categories → 4K UHD** to see programmes with UHD-listed episodes. Opening a programme from this category selects a season with UHD episodes when available, while showing every episode in the season. Individual 4K episodes have a badge. The received playback quality can still fall back to HD if UHD is unavailable or your setup is not accepted.
 

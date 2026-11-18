@@ -1,6 +1,39 @@
 # Public edition verification
 
-## Current release: 0.10.7 (28)
+## Release: 0.10.9 hotfix (40)
+
+- Based on public 0.10.8 and the approved TEST build 39 navigation/setup changes. Standard Beeb icon, public app/extension identifiers, URL scheme and device-only Keychain namespace are retained.
+- Enable BBC UHD is the visible one-step setup name. No manual helper URL entry, downloader or computer is required for UHD setup. Upstream attribution remains in NOTICE.md and SETUP-UHD.md.
+- Existing Display 4K UHD category preference remains available across Classic/Modern navigation and Browse.
+- Clean physical-device tvOS Release build and Debug simulator build passed. Unsigned app and Top Shelf have matching 0.10.9 (40), arm64 device executables, with no signing profiles or code-signature load commands.
+- Four source-boundary tests and three unsigned-payload structural tests passed. Source and final unsigned IPA scans passed, including known private installer/account/team/device and TEST-namespace checks.
+- The unchanged native identity packaging/validation logic inherits synthetic encryption, certificate matching, import and rejection coverage from TEST setup validation. The maintainer confirmed one-step setup on their physical Apple TV in TEST. The public signing/install path has not been repeated under another user's account.
+- All eight public-app simulator UI tests passed: one-step setup naming/manual removal, UHD category hidden in navigation and Browse, sidebar boundary/return and scroll retention, pushed-page isolation, topbar Up/Down and Saved from all first-row episode columns. The unsigned public IPA requires each installer's own signing; the matching TEST features were installed separately on the maintainer's Apple TV.
+- The maintainer approved the hotfix banner on 24 October 2026. It is prepared as a separate release image outside the source tree. Source, IPA and banner are packaged as release assets.
+
+## Historical release: 0.10.8 (36)
+
+- Public app is derived from the approved TEST feature set, with the original public Beeb icon, app/extension identities, live URL scheme and Keychain namespace.
+- Added a persisted Display 4K UHD category toggle, default on, shared by all navigation layouts and Browse. Hiding an active UHD tab returns Home and removes hidden focus targets. TwinVine setup is independent.
+- Modern/Classic, Topbar/Sidebar, readable categories, continuous listings, episode discovery updates, live captions and Back/Cancel changes are included.
+- Prior build 35 native simulator checks on the matching TEST/prototype logic passed for all three layouts, Settings selection/retention, Topbar Down, programme Back, sidebar Back, Settings Back and Additional Streams cancellation.
+- Live captions are confirmed working on Apple TV by the maintainer. Automated timing/bridge/rewind checks also cover the live caption conversion. Compatible BBC live UHD event playback remains availability-dependent and is not claimed validated by off-air fixtures.
+- Clean-source physical tvOS Release build passed with signing disabled. App and Top Shelf are 0.10.8 (36), arm64, with standard public identifiers and no code-signature load commands or provisioning profiles.
+- Build 36: clean unsigned tvOS Release build, three release-boundary tests, three nested unsigned-IPA tests, source boundary scan and unsigned payload scan passed. No new simulator or physical-device UI check was performed for this settings-only change.
+- Inherited build 35 validation: resolver, catalogue/lifecycle/index/library, live-caption HTTP/timing/rewind, live UHD rolling/loopback, public live-channel routes and playback policy suites passed. Release-boundary and nested-extension unsigned checks passed.
+- Public source and payload scans found no known private installer/account/team/TEST namespace markers. New native screenshot ancillary metadata was removed without changing compressed pixel data.
+- IPA ZIP integrity and neutral owner/timestamp metadata checks passed; source packaging runs the release boundary checker and excludes Git history, builds, identities and binaries. SHA-256 files accompany both release assets.
+- This unsigned public IPA has not been installed as-is, because it needs the recipient's signing. Matching TEST features were installed separately; the maintainer confirms live captions work. No GitHub upload or public-device installation is part of this preparation.
+
+## Earlier prepared 0.10.8 (29)
+
+- RED is a native live-player action opening the two curated additional streams. On-demand controls retain their previous configuration.
+- Live DASH fixtures cover rolling windows, stable sequence/resource mapping, bounded resources, timeline addressing, invalid timing, off-air/protected rejection and an advancing loopback playlist.
+- DASH, catalogue, live channel and public source/privacy checks passed. Release and Debug simulator builds passed.
+- Integrated simulator UI automation is incomplete because installation/launch stalled. Physical Apple TV remote/menu verification and BBC UHD event playback remain outstanding.
+- A fresh unsigned physical-device IPA and matching source archive are prepared locally; no GitHub publication or device installation is performed by this update.
+
+## Historical release: 0.10.7 (28)
 
 - Unsigned physical-device tvOS Release build passed; the app and Top Shelf extension both use version 0.10.7 (28), with distinct public bundle identifiers.
 - Both executables are arm64 and contain no code-signature load command. The IPA contains no provisioning profiles, AppleDouble entries or detected private account paths/key markers. Archive integrity and SHA-256 verification passed.

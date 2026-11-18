@@ -25,7 +25,7 @@ struct ContinueWatchingRow: View {
                     LazyHStack(spacing: 28) {
                         ForEach(history.records) { record in
                             Button { open(record) } label: { ContinueCard(record: record).frame(width: 390) }
-                                .buttonStyle(ProgrammeCardStyle()).disabled(state.preparing || playback.loading)
+                                .buttonStyle(ProgrammeCardStyle()).disabled(state.preparing || playback.loading).rememberSidebarFocus()
                                 .contextMenu { Button("Remove from Continue Watching") { history.remove(record.id) } }
                         }
                     }.padding(.vertical, 30).padding(.horizontal, 24)
@@ -67,21 +67,31 @@ struct ContinueWatchingRow: View {
         }
     }
 }
+// progress line on the picture, label above the title (official-app style).
 struct ContinueCard: View {
     let record: WatchRecord
+    @Environment(\.isFocused) private var focused
     private var episode: CatalogueEpisode { record.completed ? record.nextEpisode ?? record.episode : record.episode }
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 4) {
             ProgrammeThumbnail(url: episode.programme.image ?? record.show?.image, uhd: episode.programme.uhdListed == true, hdr: episode.programme.hdrListed == true)
-            Text(record.show?.title ?? episode.programme.showTitle ?? episode.programme.title)
-                .font(.headline).lineLimit(1).frame(maxWidth: .infinity, minHeight: 44, maxHeight: 44, alignment: .leading)
-            Text(episode.subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                .frame(maxWidth: .infinity, minHeight: 32, maxHeight: 32, alignment: .leading)
-            ProgressView(value: record.completed ? 0 : record.fraction).tint(.pink)
-                .opacity(record.completed ? 0 : 1).accessibilityHidden(record.completed)
+                .overlay(alignment: .bottom) {
+                    if !record.completed {
+                        GeometryReader { g in
+                            ZStack(alignment: .leading) {
+                                Rectangle().fill(.black.opacity(0.45))
+                                Rectangle().fill(Color.pink).frame(width: g.size.width * record.fraction)
+                            }
+                        }.frame(height: 6).clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 10, bottomTrailingRadius: 10))
+                    }
+                }
+                .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
             Text(record.completed ? (record.nextEpisode == nil ? "Check for next episode" : "Up next") : "Resume · \(record.remainingMinutes) min left")
-                .font(.caption).foregroundStyle(.white).lineLimit(1)
-                .frame(maxWidth: .infinity, minHeight: 32, maxHeight: 32, alignment: .leading)
-        }.padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                .font(.system(size: 21)).foregroundStyle(.secondary).lineLimit(1).padding(.top, 10)
+            Text(record.show?.title ?? episode.programme.showTitle ?? episode.programme.title)
+                .font(.system(size: 28, weight: .semibold)).lineLimit(1)
+                .foregroundStyle(focused ? Color.white : Color.white.opacity(0.8))
+            Text(episode.subtitle).font(.system(size: 22)).foregroundStyle(.secondary).lineLimit(1)
+        }.padding(14).frame(maxWidth: .infinity, alignment: .leading)
     }
 }

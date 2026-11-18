@@ -43,6 +43,20 @@ import Foundation
         let opened = try await linkedStore.open(linked)
         precondition(opened.id == "b0000003" && opened.episodes.count == 2 && opened.uhdEpisodeCount == 1, "Linked episode opens all episodes, including non-UHD")
         precondition(observedParent == opened.id && observedSource == linked.id, "Publish opened details for passive UHD discovery and alias learning")
+        let continuousRequests = RequestLogForLifecycle()
+        let continuous = ContinuousCatalogueStore(api: DiscoveryAPI(fetch: { url in
+            await continuousRequests.record(url)
+            let number = Int(URLComponents(url: url, resolvingAgainstBaseURL: false)!.queryItems!.first { $0.name == "page" }!.value!)!
+            let ids = number == 1 ? ["b0000001", "b0000002"] : ["b0000002", "b0000003"]
+            return try JSONSerialization.data(withJSONObject: ["category_programmes": ["page": number, "per_page": 2, "count": 3, "elements": ids.map { ["id": $0, "title": $0, "count": 1, "tleo_type": "brand"] }]])
+        }))
+        await continuous.next(category: "drama-and-soaps", letter: nil)
+        precondition(continuous.shows.count == 2 && continuous.hasMore, "First batch does not crawl the catalogue")
+        await continuous.next(category: "drama-and-soaps", letter: nil)
+        precondition(continuous.shows.count == 3 && !continuous.hasMore, "Append in order, deduplicate and stop at the total")
+        await continuous.next(category: "drama-and-soaps", letter: nil)
+        let fetched = await continuousRequests.paths()
+        precondition(fetched.count == 2, "No extra request after reaching the end")
         print("PASS: lightweight offline launch, absence of full-catalogue requests, page cache and pagination restoration")
     }
 }

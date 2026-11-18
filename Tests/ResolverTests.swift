@@ -30,7 +30,28 @@ import Foundation
         """
         let parser = XMLParser(data: Data(xml.utf8)); parser.delegate = delegate
         check(parser.parse() && delegate.urls.map(\.absoluteString) == ["https://cdn.example/yes"], "Selector filtering")
+        let metadata = Data("""
+        {"episodes":[{"id":"p09pm8b0","title":"Vigil","synopses":{"large":"Episode description"},"versions":[
+        {"id":"p09tjhvs","kind":"audio-described"},
+        {"id":"m002hzwl","kind":"signed"},
+        {"id":"m000z8m3","kind":"technical-replacement","uhd":true,"availability":{"start":"2022-01-01T00:00:00Z","end":"2099-01-01T00:00:00Z"}},
+        {"id":"m0032x5w","kind":"original","availability":{"end":"2000-01-01T00:00:00Z"}}]}]}
+        """.utf8)
+        let programme = try BBCService.programme(metadata, id:"p09pm8b0")
+        check(programme.version == "m000z8m3" && programme.summary == "Episode description", "Current episode API supplies playable version")
+        let parsedEpisode = try BBCService.episodeMetadata(metadata,id:"p09pm8b0")
+        check(BBCService.playbackVersions(parsedEpisode) == ["m000z8m3"], "Excluded expired, signed and described versions")
+        do { _ = try BBCService.programme(Data("<html>Service Temporarily Unavailable</html>".utf8), id:"p09pm8b0");fatalError("Accepted HTML as JSON") }
+        catch { check(error.localizedDescription.contains("episode service"), "Readable service-format error") }
+        do { _ = try BBCService.programme(metadata,id:"m0032x5w");fatalError("Played wrong episode") } catch {}
         print("PASS: resolver parsing, validation, URL handling, quality selection and selector filtering")
+        if CommandLine.arguments.count > 2, CommandLine.arguments[1] == "--episode-response" {
+            let metadata = try Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[2]))
+            let episode = try BBCService.programme(metadata, id:"p09pm8b0")
+            check(episode.version == "m000z8m3", "Current BBC response resolves the available Vigil version")
+            print("PASS: current BBC episode response resolves Vigil metadata and playback version")
+            return
+        }
         if CommandLine.arguments.count > 1 {
             let service = BBCService()
             let p = try await service.programme(CommandLine.arguments[1])

@@ -111,3 +111,27 @@ struct PageSnapshot: Codable { let shows: [CatalogueShow]; let page: Int; let to
         }
     }
 }
+
+@MainActor final class ContinuousCatalogueStore: ObservableObject {
+    @Published var shows: [CatalogueShow] = []
+    @Published var count = 0
+    @Published var loading = false
+    @Published var error: String?
+    private let api: DiscoveryAPI
+    init(api: DiscoveryAPI = DiscoveryAPI()) { self.api = api }
+    private var page = 0
+    var hasMore: Bool { page == 0 || shows.count < count }
+    func next(category: String?, letter: String?) async {
+        guard !loading, hasMore else { return }
+        loading = true; error = nil
+        defer { loading = false }
+        do {
+            let result = try await api.page(category: category, letter: letter, page: page + 1)
+            try Task.checkCancellation()
+            guard result.page == page+1 else {throw BBCError.message("The catalogue could not continue. Please retry.")}
+            let existing = Set(shows.map(\.id));let added = result.shows.filter {!existing.contains($0.id)}
+            guard !added.isEmpty || result.total == 0 else {throw BBCError.message("No further programmes were returned. Please retry.")}
+            shows += added; count = result.total; page = result.page
+        } catch {if !Task.isCancelled {self.error = error.localizedDescription}}
+    }
+}

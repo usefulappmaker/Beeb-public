@@ -11,16 +11,10 @@ import Foundation
     }
     private func manifest(for programme: Programme) async throws -> (manifest: DASHManifest, versionID: String) {
         let client = try secureFetch(); defer { client.invalidate() }
-        let playlistURL = URL(string: "https://www.bbc.co.uk/programmes/\(try BBCService.pid(programme.id))/playlist.json")!
-        let metadata = try await fetch(playlistURL)
-        let root = try JSONSerialization.jsonObject(with: metadata) as? [String: Any] ?? [:]
-        let versions = root["allAvailableVersions"] as? [[String: Any]] ?? []
-        var ids = versions.compactMap { version -> String? in
-            let types = (version["types"] as? [String] ?? []).joined(separator: " ").lowercased()
-            guard !types.contains("described"), !types.contains("description"), !types.contains("signed") else { return nil }
-            return version["pid"] as? String
-        }
-        if ids.isEmpty, !programme.version.isEmpty { ids = [programme.version] }
+        let id = try BBCService.pid(programme.id)
+        let metadata = try await fetch(URL(string: "https://ibl.api.bbc.co.uk/ibl/v1/episodes/\(id)")!)
+        let episode = try BBCService.episodeMetadata(metadata, id: id)
+        let ids = BBCService.playbackVersions(episode)
         var last: Error?
         var seen = Set<String>()
         for version in ids where seen.insert(version).inserted {

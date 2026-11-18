@@ -113,7 +113,7 @@ final class BBCSecureSession: NSObject, URLSessionDelegate, @unchecked Sendable 
     private lazy var session = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil)
     init(identity: SecIdentity, userAgent: String) { self.identity = identity; agent = userAgent }
     static func configured() throws -> BBCSecureSession {
-        guard let identity = UHDIdentityVault.identity(), !UHDIdentityVault.userAgent.isEmpty else { throw BBCError.message("Connect TwinVine once in Settings to enable UHD playback.") }
+        guard let identity = UHDIdentityVault.identity(), !UHDIdentityVault.userAgent.isEmpty else { throw BBCError.message("Choose Enable BBC UHD in Settings to set up UHD playback.") }
         return BBCSecureSession(identity: identity, userAgent: UHDIdentityVault.userAgent)
     }
     func fetch(_ url: URL) async throws -> Data {
