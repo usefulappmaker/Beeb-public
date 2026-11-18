@@ -4,12 +4,20 @@ import AVFoundation
 
 @main struct BeebMacApp: App {
     @NSApplicationDelegateAdaptor(MacAppDelegate.self) private var delegate
+    /// Shared by the main window and Stream Info, which describes what this player is receiving.
+    @StateObject private var player = MacPlayerController()
     var body: some Scene {
         Window("Beeb", id: "main") {
-            MacRootView().preferredColorScheme(.dark).frame(minWidth: 940, minHeight: 600)
+            MacRootView().environmentObject(player).preferredColorScheme(.dark).frame(minWidth: 940, minHeight: 600)
         }
         .defaultSize(width: 1320, height: 840)
         .commands { CommandGroup(replacing: .newItem) {} }
+        // Listed in the Window menu; also opened from the player's title bar.
+        Window("Stream Info", id: MacStreamInfoView.windowID) {
+            MacStreamInfoView(model: player.model).preferredColorScheme(.dark)
+        }
+        .defaultSize(width: 460, height: 860)
+        .keyboardShortcut("i", modifiers: [.command, .option])
     }
 }
 
@@ -38,7 +46,8 @@ struct MacRootView: View {
     @StateObject private var index = CatalogueIndexStore()
     @StateObject private var library = Library()
     @StateObject private var history = WatchHistory()
-    @StateObject private var player = MacPlayerController()
+    @EnvironmentObject private var player: MacPlayerController
+    @Environment(\.openWindow) private var openWindow
     @AppStorage("display4KUHDCategory") private var display4KUHDCategory = true
     @State private var section: MacSection? = .home
     @State private var path = NavigationPath()
@@ -105,7 +114,10 @@ struct MacRootView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in player.model.checkpoint() }
         #if DEBUG
-        .task { await MacValidation.run(player: player, history: history, select: { section = $0 }, open: { path.append($0) }) }
+        .task {
+            if ProcessInfo.processInfo.environment["BEEB_MAC_STREAM_INFO"] == "1" { openWindow(id: MacStreamInfoView.windowID) }
+            await MacValidation.run(player: player, history: history, select: { section = $0 }, open: { path.append($0) })
+        }
         #endif
     }
 }
@@ -116,6 +128,7 @@ struct MacRootView: View {
 ///   BEEB_MAC_SHOW=<pid>       open this programme's page at launch
 ///   BEEB_MAC_PID=<pid|url>    play this episode at launch
 ///   BEEB_MAC_LIVE=<channel>   play this live channel at launch, e.g. bbc_one_london
+///   BEEB_MAC_STREAM_INFO=1    open the Stream Info window at launch
 ///   BEEB_MAC_VALIDATE=<file>  play muted, record what arrived as JSON, then quit
 ///   BEEB_MAC_SNAPSHOT=<file>  after BEEB_MAC_SNAPSHOT_DELAY seconds, save the window as PNG and quit
 ///   BEEB_MAC_KEYCHAIN_TEST=<p12> with _PASS and _RESULT=<file>: store, read back and remove a
