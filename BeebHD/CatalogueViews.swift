@@ -803,6 +803,8 @@ struct CatalogueShowView: View {
         return ProfileStore.shared.kidsMode ? episodes.filter { ($0.programme.guidance ?? "").isEmpty } : episodes
     }
     var visibleEpisodes: [CatalogueEpisode] { Array(selectedEpisodes.dropFirst((state.episodePage - 1) * 30).prefix(30)) }
+    /// Series and paging controls sit between the header and the grid; Up must reach them rather than jump to Saved.
+    var hasControlsAboveGrid: Bool { orderedSeries.count > 1 || selectedEpisodes.count > 30 }
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         ScrollView {
@@ -841,7 +843,7 @@ struct CatalogueShowView: View {
                         Button("Previous episodes") { state.episodePage -= 1 }.disabled(state.episodePage <= 1)
                         Text("Episodes \((state.episodePage - 1) * 30 + 1)–\(min(state.episodePage * 30, selectedEpisodes.count))")
                         Button("More episodes") { state.episodePage += 1 }.disabled(state.episodePage * 30 >= selectedEpisodes.count)
-                    }
+                    }.frame(maxWidth: .infinity, alignment: .leading).focusSection()
                 }
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 380), spacing: 36)], spacing: 30) {  // 4 columns (3 in sidebar layout)
                     ForEach(visibleEpisodes) { episode in
@@ -855,7 +857,7 @@ struct CatalogueShowView: View {
                     }
                 }
                 .background(alignment: .top) {
-                    WideBookmarkFocusGuide(destination: bookmarkFocus, enabled: orderedSeries.count <= 1 && visibleEpisodes.prefix(episodeColumns).contains { $0.id == focusedEpisode })
+                    WideBookmarkFocusGuide(destination: bookmarkFocus, enabled: !hasControlsAboveGrid && visibleEpisodes.prefix(episodeColumns).contains { $0.id == focusedEpisode })
                         .frame(height: 24).offset(y: -26)
                 }
                 if state.show != nil && selectedEpisodes.isEmpty { Text("No episodes are currently available.").foregroundStyle(.secondary) }
