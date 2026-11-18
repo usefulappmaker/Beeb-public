@@ -73,6 +73,7 @@ struct MacPlayerScreen: View {
     @State private var hideChrome: Task<Void, Never>?
     @State private var showInfo = false
     @State private var videoRange: String?
+    @Environment(\.openWindow) private var openWindow
     private var paused: Bool { model.player.timeControlStatus == .paused }
     var body: some View {
         ZStack {
@@ -148,6 +149,8 @@ struct MacPlayerScreen: View {
                 Button { showInfo.toggle() } label: { Label("Info", systemImage: "info.circle") }
                     .popover(isPresented: $showInfo, arrowEdge: .bottom) { MacPlayerInfo(model: model) }
             }
+            Button { openWindow(id: MacStreamInfoView.windowID) } label: { Label("Stream info", systemImage: "waveform.path.ecg").labelStyle(.iconOnly) }
+                .help("Stream info: what is being received and shown (⌥⌘I)")
             Button { NSApp.keyWindow?.toggleFullScreen(nil) } label: { Label("Full screen", systemImage: "arrow.up.left.and.arrow.down.right").labelStyle(.iconOnly) }
                 .help("Toggle full screen")
         }

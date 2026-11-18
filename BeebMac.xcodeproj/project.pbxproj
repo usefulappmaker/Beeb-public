@@ -30,6 +30,7 @@
 		9FA526A0C610A2526EFE3A1A /* LocalHLSServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAAFE67391E06FB701D32106 /* LocalHLSServer.swift */; };
 		A3B73828E011E357C12396E6 /* MacBrowseViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10293C8984319084B4C66D0 /* MacBrowseViews.swift */; };
 		A92D1B65B753D7A3F488D5B8 /* BeebMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6A72618F6C7B4AA30E3155D /* BeebMacApp.swift */; };
+		AA370E49BC0CC8037A7C3442 /* MacStreamInfoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A1E0FE42CA6EEAA1282454 /* MacStreamInfoView.swift */; };
 		AD9E29448260B0B62D493C07 /* Playback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ECF3F70DF888019EF3A2ED1 /* Playback.swift */; };
 		AE73032D44CCE42AAEB9F37F /* PlaybackPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5D396C81FC0EDC5CD05C31A /* PlaybackPolicy.swift */; };
 		B5430B8F52771240B2A3D244 /* UHDService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA1D84E6100E9BAFD1AFEF4A /* UHDService.swift */; };
@@ -84,6 +85,7 @@
 		EC6C1A03F2D6B45177EBE2CA /* MacGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacGuideView.swift; sourceTree = "<group>"; };
 		F10293C8984319084B4C66D0 /* MacBrowseViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacBrowseViews.swift; sourceTree = "<group>"; };
 		F12B4B5CC9C072F00D4630AE /* TwinVineUHDProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TwinVineUHDProbe.swift; sourceTree = "<group>"; };
+		F2A1E0FE42CA6EEAA1282454 /* MacStreamInfoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacStreamInfoView.swift; sourceTree = "<group>"; };
 		FAAFE67391E06FB701D32106 /* LocalHLSServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalHLSServer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -99,6 +101,7 @@
 				1AF21273CC0F485B9615155E /* MacPlayerView.swift */,
 				203E88E624AC899188E10E65 /* MacSettingsView.swift */,
 				4275530080D43E444B40B0D7 /* MacShowView.swift */,
+				F2A1E0FE42CA6EEAA1282454 /* MacStreamInfoView.swift */,
 				C8C94F98302B76554782D0D4 /* MacTheme.swift */,
 			);
 			path = Mac;
@@ -259,6 +262,7 @@
 				B59BE6779FD04E130ECD0F15 /* MacPlayerView.swift in Sources */,
 				72666C370AE491C1DF310654 /* MacSettingsView.swift in Sources */,
 				DF6F0E7E0ECD2AFCB6CABBF4 /* MacShowView.swift in Sources */,
+				AA370E49BC0CC8037A7C3442 /* MacStreamInfoView.swift in Sources */,
 				1678CF6AA31804B0C3611514 /* MacTheme.swift in Sources */,
 				29709CCB55139122725C491B /* NativeIdentityPackage.swift in Sources */,
 				AD9E29448260B0B62D493C07 /* Playback.swift in Sources */,
