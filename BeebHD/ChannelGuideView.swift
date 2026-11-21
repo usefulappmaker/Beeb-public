@@ -234,6 +234,7 @@ struct ChannelGuideView: View {
         let end = start.addingTimeInterval(Double(width / pointsPerMinute) * 60)
         let aim = min(max(focusTime ?? now, start), end.addingTimeInterval(-60))
         let currentRow = rowID(focusedCell)
+        let neighbours = neighbourRows(of: currentRow)
         func x(_ date: Date) -> CGFloat { CGFloat(date.timeIntervalSince(start) / 60) * pointsPerMinute }
         let marks = stride(from: ChannelGuide.halfHour(start, roundingUp: true).timeIntervalSinceReferenceDate, to: end.timeIntervalSinceReferenceDate - 1500, by: 1800)
             .map { Date(timeIntervalSinceReferenceDate: $0) }
@@ -262,7 +263,7 @@ struct ChannelGuideView: View {
                     ForEach(guide) { row in
                         // Away from the focused row only the programme at the focus time takes focus,
                         // so Up and Down land in the same column.
-                        let landing = currentRow == row.id ? nil : ChannelGuide.landing(in: row.entries, at: aim, from: start, to: end)
+                        let landing = currentRow == row.id || !neighbours.contains(row.id) ? nil : ChannelGuide.landing(in: row.entries, at: aim, from: start, to: end)
                         HStack(spacing: 0) {
                             ForEach(ChannelGuide.segments(row.entries, from: start, to: end)) { segment in
                                 let cellWidth = CGFloat(segment.minutes) * pointsPerMinute
@@ -275,7 +276,10 @@ struct ChannelGuideView: View {
                             }
                         }.frame(width: width, height: rowHeight, alignment: .leading)
                     }
-                    ForEach(additionalStreams) { stream in streamCell(stream, width: width) }
+                    ForEach(additionalStreams) { stream in
+                        let id = Self.streamPrefix + stream.id
+                        streamCell(stream, width: width, reachable: currentRow == id || neighbours.contains(id))
+                    }
                 }
                 .overlay(alignment: .topLeading) {
                     if now >= start && now < end {
@@ -388,7 +392,17 @@ struct ChannelGuideView: View {
             .zIndex(expanded ? 1 : 0)
             .accessibilityLabel("\(entry.title), \(channel.title), \(ChannelGuide.times(entry))" + (available ? "" : ", not available"))
     }
-    private func streamCell(_ stream: AdditionalLiveStream, width: CGFloat) -> some View {
+    /// Away from the focused row, only the nearest rows above and below (or the first row, from the day row) take
+    /// focus, each at the focus time, so Up and Down move exactly one row and the focus engine can't skip one.
+    private func neighbourRows(of current: String?) -> Set<String> {
+        let order = guide.map(\.id) + additionalStreams.map { Self.streamPrefix + $0.id }
+        let landable = Set(landings(now: Date()).map(\.row))
+        guard let current, let index = order.firstIndex(of: current) else { return Set(order.first { landable.contains($0) }.map { [$0] } ?? []) }
+        let above = order[..<index].reversed().first { landable.contains($0) }
+        let below = order[(index + 1)...].first { landable.contains($0) }
+        return Set([above, below].compactMap { $0 })
+    }
+    private func streamCell(_ stream: AdditionalLiveStream, width: CGFloat, reachable: Bool) -> some View {
         Button { playStream(stream) } label: {
             VStack(alignment: .leading, spacing: 3) {
                 Text(stream.title).font(.system(size: 24, weight: .semibold)).lineLimit(1)
@@ -399,6 +413,7 @@ struct ChannelGuideView: View {
         }
         .buttonStyle(GuideCellStyle(onAir: true, onDemand: false))
         .focused($focusedCell, equals: Self.streamPrefix + stream.id)
+        .disabled(!reachable)
         .frame(width: max(6, width - 6), height: rowHeight).padding(.trailing, 6)
         .accessibilityLabel("\(stream.title), live events when on air")
     }
