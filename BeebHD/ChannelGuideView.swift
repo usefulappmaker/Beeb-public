@@ -174,7 +174,7 @@ struct ChannelGuideView: View {
         if let previous = calendar.date(byAdding: .day, value: -1, to: now), calendar.isDate(date, inSameDayAs: previous) { return "Yesterday" }
         return date.formatted(.dateTime.weekday(.abbreviated).day())
     }
-    /// Quick jumps between days: the same time of day on the chosen day; Today returns to now.
+    /// Quick jumps between days: the same time of day on the chosen day; Now returns to the present.
     private func dayPicker(now: Date) -> some View {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: now)
@@ -183,7 +183,7 @@ struct ChannelGuideView: View {
         return HStack(spacing: 6) {
             ForEach(days, id: \.self) { day in
                 let selected = calendar.isDate(day, inSameDayAs: shown)
-                Button { jump(to: day, now: now) } label: { Text(Self.dayName(day, now: now)) }
+                Button { jump(to: day, now: now) } label: { Text(calendar.isDate(day, inSameDayAs: today) ? "Now" : Self.dayName(day, now: now)) }
                     .buttonStyle(GuideDayStyle(selected: selected))
                     .focused($focusedDay, equals: day)
                     .accessibilityAddTraits(selected ? .isSelected : [])
@@ -398,12 +398,12 @@ private struct GuideDayLabel<Label: View>: View {
     let selected: Bool
     @Environment(\.isFocused) private var focused
     var body: some View {
-        label.font(.system(size: 19, weight: .semibold)).lineLimit(1).fixedSize()
+        label.font(.system(size: 22, weight: .semibold)).lineLimit(1).fixedSize()
             .foregroundStyle(focused ? Color.black : selected ? Color.pink : Color.white.opacity(0.6))
-            .padding(.horizontal, 12).padding(.vertical, 5)
+            .padding(.horizontal, 14).padding(.vertical, 6)
             .background(focused ? Color.white : Color.clear, in: Capsule())
             .overlay(alignment: .bottom) {
-                if selected && !focused { Capsule().fill(.pink).frame(height: 3).padding(.horizontal, 12).offset(y: 2) }
+                if selected && !focused { Capsule().fill(.pink).frame(height: 3).padding(.horizontal, 14).offset(y: 2) }
             }
             .animation(.easeOut(duration: 0.12), value: focused)
             .focusEffectDisabled()
