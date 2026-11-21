@@ -62,7 +62,22 @@ actor RequestLog {
             check(fallback.features.first?.image?.lastPathComponent == expected, "Banner uses default plain still or no image, never logo-only fallback")
         }
         do { _ = try DiscoveryAPI.state(from:"window.__IPLAYER_REDUX_STATE__ = {\"broken\":");fatalError("Truncated homepage accepted") } catch {}
-        print("PASS: selected-show pagination, series metadata, one-page browsing, homepage ranking, banner parsing and malformed-response handling")
+        // Long-running programmes without series slices: grouped by the series named in each subtitle, specials
+        // joined to the series broadcast nearest them, the newest series last (the default tab).
+        func hignfy(_ id: String, _ subtitle: String, _ date: String) -> CatalogueEpisode {
+            var p = Programme(id: id, title: "HIGNFY", summary: "", image: nil, version: "v", guidance: nil)
+            p.episodeSubtitle = subtitle
+            return CatalogueEpisode(programme: p, subtitle: subtitle, duration: "30 mins", sliceID: "episodes", seriesTitle: "Episodes", broadcastDate: date)
+        }
+        let long = [hignfy("p0000001", "Series 72: Episode 7", "2026-11-14T21:00:00Z"), hignfy("p0000002", "Series 72: Episode 1", "2026-10-03T21:00:00Z"),
+                    hignfy("p0000003", "Have I Got 2025 for You", "2025-12-19T21:00:00Z"), hignfy("p0000004", "Series 71: Episode 10", "2025-12-12T21:00:00Z"),
+                    hignfy("p0000005", "Series 66: Episode 1", "2023-09-29T21:00:00Z"), hignfy("p0000006", "Have I Got 2019 for You", "2019-12-20T21:00:00Z")]
+        let grouped = CatalogueShow(id: "b006mkw3", title: "HIGNFY", summary: "", image: nil, letter: "h", channel: "BBC", categories: [], expectedEpisodes: 6, singleEpisode: false, episodes: long, indexedAt: Date()).series
+        check(grouped.map(\.title) == ["Specials", "Series 66", "Series 71", "Series 72"], "Series come from the subtitles; leftover specials first, newest series last")
+        check(grouped.first { $0.title == "Series 71" }?.episodes.map(\.id).sorted() == ["p0000003", "p0000004"], "A special joins the series broadcast nearest to it")
+        check(grouped.first { $0.title == "Specials" }?.episodes.map(\.id) == ["p0000006"], "A special far from any series stays in Specials")
+        check(grouped.last?.title == "Series 72", "The newest series is last, so it opens by default")
+        print("PASS: selected-show pagination, series metadata, one-page browsing, homepage ranking, banner parsing, series from subtitles and malformed-response handling")
         if CommandLine.arguments.contains("--live") {
             let live = DiscoveryAPI()
             print("Live: homepage")

@@ -34,12 +34,50 @@ struct CatalogueShow: Codable, Identifiable, Hashable {
     var discoveryEpisodeID: String? = nil
     var portraitImage: URL? = nil
     var series: [CatalogueSeries] {
+        if let numbered = Self.seriesFromSubtitles(episodes) { return numbered }
         var order = [String](), groups = [String: [CatalogueEpisode]]()
         for e in episodes {
             if groups[e.sliceID] == nil { order.append(e.sliceID) }
             groups[e.sliceID, default: []].append(e)
         }
         return order.map { CatalogueSeries(id: $0, title: groups[$0]?.first?.seriesTitle ?? "Episodes", episodes: groups[$0] ?? []) }
+    }
+    /// Long-running programmes (Have I Got News for You) often come without series slices, so every episode lands
+    /// in one list that opens at the oldest series. When the subtitles name two or more series ("Series 72:
+    /// Episode 7"), group by them instead. Specials join the series broadcast nearest to them (within six weeks);
+    /// any others form a Specials group, kept first so the newest series stays last (the default tab).
+    static func seriesFromSubtitles(_ episodes: [CatalogueEpisode]) -> [CatalogueSeries]? {
+        guard episodes.count > 1, Set(episodes.map(\.sliceID)).count == 1, let expression = try? NSRegularExpression(pattern: "^\\s*(?:series|season)\\s+(\\d+)\\b", options: .caseInsensitive) else { return nil }
+        func number(_ episode: CatalogueEpisode) -> Int? {
+            let text = episode.subtitle
+            guard let match = expression.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+                  let range = Range(match.range(at: 1), in: text) else { return nil }
+            return Int(text[range])
+        }
+        let iso = ISO8601DateFormatter(), fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        func date(_ episode: CatalogueEpisode) -> Date? { episode.broadcastDate.flatMap { fractional.date(from: $0) ?? iso.date(from: $0) } }
+        var groups = [Int: [CatalogueEpisode]](), loose = [CatalogueEpisode]()
+        for episode in episodes { if let n = number(episode) { groups[n, default: []].append(episode) } else { loose.append(episode) } }
+        guard groups.count >= 2 else { return nil }
+        var specials = [CatalogueEpisode]()
+        for episode in loose {
+            guard let when = date(episode) else { specials.append(episode); continue }
+            let nearest = groups.compactMap { n, list -> (Int, TimeInterval)? in
+                let gaps = list.compactMap(date).map { abs($0.timeIntervalSince(when)) }
+                return gaps.min().map { (n, $0) }
+            }.min { $0.1 < $1.1 }
+            if let nearest, nearest.1 <= 42 * 86400 { groups[nearest.0, default: []].append(episode) } else { specials.append(episode) }
+        }
+        func regrouped(_ e: CatalogueEpisode, _ id: String, _ title: String) -> CatalogueEpisode {
+            CatalogueEpisode(programme: e.programme, subtitle: e.subtitle, duration: e.duration, sliceID: id, seriesTitle: title,
+                             parentPosition: e.parentPosition, broadcastDate: e.broadcastDate)
+        }
+        let numbered = groups.keys.sorted().map { n in
+            CatalogueSeries(id: "series-\(n)", title: "Series \(n)", episodes: (groups[n] ?? []).map { regrouped($0, "series-\(n)", "Series \(n)") })
+        }
+        let extra = specials.isEmpty ? [] : [CatalogueSeries(id: "specials", title: "Specials", episodes: specials.map { regrouped($0, "specials", "Specials") })]
+        return extra + numbered
     }
 }
 struct CataloguePage {
