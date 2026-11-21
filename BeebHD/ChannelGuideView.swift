@@ -192,6 +192,7 @@ struct ChannelGuideView: View {
             // Over the timeline, so Down from any day has a programme beneath it.
             .padding(.leading, channelWidth + gap)
             .focusSection().accessibilityElement(children: .contain).accessibilityLabel("Day")
+            .onMoveCommand { direction in if direction == .down { ensureVerticalMove(true, from: nil) } }
             // Arriving from above or below lands on the day on screen, not the first in the row.
             .onChange(of: focusedDay) { old, day in
                 if old == nil, day != nil, day != shown { focusedDay = shown }
@@ -265,11 +266,40 @@ struct ChannelGuideView: View {
                     }
                 }
                 .onMoveCommand { direction in
+                    if direction == .up || direction == .down { ensureVerticalMove(direction == .down, from: focusedCell); return }
                     // Right at the window's edge; Left is caught by the channel name.
                     guard direction == .right, let (row, entry) = locate(focusedCell) else { return }
                     move(row, entry, forward: true)
                 }
             }.padding(.bottom, 60)
+        }
+    }
+    /// The programme to land on in each row, top to bottom, for the time Up and Down aim for.
+    private func landings(now: Date) -> [(row: String, cell: String)] {
+        let start = start(now), end = start.addingTimeInterval(span)
+        let aim = min(max(focusTime ?? now, start), end.addingTimeInterval(-60))
+        return guide.compactMap { row in
+            ChannelGuide.landing(in: row.entries, at: aim, from: start, to: end, now: now).map { (row.id, cellID(row.channel, $0)) }
+        } + additionalStreams.map { (Self.streamPrefix + $0.id, Self.streamPrefix + $0.id) }
+    }
+    /// The focus engine only moves to something roughly beneath the focus. When the programme to land on is off to
+    /// one side (the one at the focus time is greyed out), it doesn't move at all, so move focus here instead.
+    private func ensureVerticalMove(_ down: Bool, from cell: String?) {
+        let day = focusedDay
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 80_000_000)
+            guard focusedCell == cell, focusedDay == day else { return }   // focus moved by itself
+            let now = Date(), rows = landings(now: now)
+            guard let cell else {   // from the day row into the guide
+                if day != nil, let first = rows.first { focusedCell = first.cell }
+                return
+            }
+            // Rows above or below the current one, nearest first.
+            let order = guide.map(\.id) + additionalStreams.map { Self.streamPrefix + $0.id }
+            guard let current = rowID(cell), let position = order.firstIndex(of: current) else { return }
+            let targets = down ? Array(order[(position + 1)...]) : Array(order[..<position].reversed())
+            if let next = targets.lazy.compactMap({ id in rows.first { $0.row == id } }).first { focusedCell = next.cell }
+            else if !down { focusedDay = Calendar.current.startOfDay(for: start(now).addingTimeInterval(span / 2)) }
         }
     }
     /// Left or Right at the edge of the window: move it to the next playable programme and focus that.
