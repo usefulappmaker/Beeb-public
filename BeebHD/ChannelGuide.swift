@@ -70,15 +70,23 @@ enum ChannelGuide {
         }.sorted { $0.start < $1.start }
     }
     /// Independent channel schedules; one unavailable feed must not hide the others.
-    static func load(_ channels: [LiveChannel], from origin: Date? = nil, perPage: Int = 50,
+    /// With `until`, further pages are fetched (up to `maxPages`) until the schedule reaches that time.
+    static func load(_ channels: [LiveChannel], from origin: Date? = nil, until: Date? = nil, perPage: Int = 50, maxPages: Int = 12,
                      fetch: @escaping (URL) async throws -> Data = { try await BBCService().fetch($0) }) async -> [GuideChannel] {
         let since = origin.map { "&from_date=" + stamp($0) } ?? ""
         return await withTaskGroup(of: (Int, GuideChannel).self) { group in
             for (index, channel) in channels.enumerated() {
                 group.addTask {
-                    let url = URL(string: "https://ibl.api.bbc.co.uk/ibl/v1/channels/\(channel.id)/broadcasts?per_page=\(perPage)\(since)")!
-                    let data = try? await fetch(url)
-                    return (index, GuideChannel(channel: channel, entries: data.map(entries) ?? []))
+                    var collected = [GuideEntry](), seen = Set<String>()
+                    for page in 1...max(1, maxPages) {
+                        let url = URL(string: "https://ibl.api.bbc.co.uk/ibl/v1/channels/\(channel.id)/broadcasts?per_page=\(perPage)\(since)" + (page > 1 ? "&page=\(page)" : ""))!
+                        guard let data = try? await fetch(url) else { break }
+                        let batch = entries(data)
+                        collected += batch.filter { seen.insert($0.id).inserted }
+                        // A short page is the end of the schedule; stop once it reaches the requested time.
+                        guard let until, batch.count >= perPage / 2, let last = batch.last, last.end < until else { break }
+                    }
+                    return (index, GuideChannel(channel: channel, entries: collected.sorted { $0.start < $1.start }))
                 }
             }
             var results = [(Int, GuideChannel)]()

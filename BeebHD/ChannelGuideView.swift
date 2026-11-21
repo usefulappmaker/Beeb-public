@@ -22,6 +22,7 @@ struct ChannelGuideView: View {
     @State private var loaded = false
     @State private var selection: GuideSelection?
     @FocusState private var focusedCell: String?
+    @FocusState private var focusedDay: Date?
     /// Start of the time on screen; nil follows the present.
     @State private var windowStart: Date?
     /// The time Up and Down aim for; nil means now.
@@ -34,9 +35,9 @@ struct ChannelGuideView: View {
     private let rulerHeight: CGFloat = 40
     private let channelWidth: CGFloat = 230
     private let gap: CGFloat = 8
-    /// Earlier programmes that can still be watched, then the rest of the evening.
-    private let hoursBack = 8
-    private let hoursAhead = 6
+    /// Five days of earlier programmes that can still be watched, then the next 24 hours.
+    private let hoursBack = 5 * 24
+    private let hoursAhead = 24
     private static let streamPrefix = "stream/"
     /// The focused row's channel name catches Left at the window's edge, so focus pages the guide
     /// instead of escaping to the controls above.
@@ -72,6 +73,7 @@ struct ChannelGuideView: View {
                 TimelineView(.periodic(from: .now, by: 30)) { context in
                     VStack(alignment: .leading, spacing: 18) {
                         infoPanel(now: context.date)
+                        dayPicker(now: context.date)
                         GeometryReader { geometry in
                             let width = max(600, geometry.size.width - channelWidth - gap)
                             grid(now: context.date, width: width)
@@ -88,7 +90,14 @@ struct ChannelGuideView: View {
             while !Task.isCancelled {
                 // Leave the network to the player while something is on screen.
                 if !PlaybackActivity.active {
-                    let fresh = await ChannelGuide.load(channels, from: ChannelGuide.origin(for: Date(), hoursBack: hoursBack), perPage: 100)
+                    if !loaded {
+                        // The next few hours first, so the guide opens quickly; then the whole range.
+                        let first = await ChannelGuide.load(channels, from: ChannelGuide.origin(for: Date()), perPage: 100)
+                        guard !Task.isCancelled else { return }
+                        guide = first; loaded = true
+                    }
+                    let now = Date()
+                    let fresh = await ChannelGuide.load(channels, from: earliest(now), until: latest(now), perPage: 100)
                     guard !Task.isCancelled else { return }
                     // Keep the last good schedule if a refresh returns nothing.
                     if !loaded || fresh.contains(where: { !$0.entries.isEmpty }) { guide = fresh }
@@ -141,7 +150,8 @@ struct ChannelGuideView: View {
                 Text(focused.entry.subtitle.isEmpty ? focused.entry.title : "\(focused.entry.title) — \(focused.entry.subtitle)")
                     .font(.system(size: 34, weight: .bold)).lineLimit(1)
                 HStack(spacing: 18) {
-                    Text(ChannelGuide.times(focused.entry)).font(.system(size: 25, weight: .medium).monospaced())
+                    Text((Calendar.current.isDateInToday(focused.entry.start) ? "" : Self.dayName(focused.entry.start, now: now) + " ") + ChannelGuide.times(focused.entry))
+                        .font(.system(size: 25, weight: .medium).monospaced())
                     Text(focused.channel.title).font(.system(size: 25)).foregroundStyle(.secondary)
                     if focused.entry.isOnAir(at: now) { Text("On now").font(.system(size: 25, weight: .semibold)).foregroundStyle(.pink) }
                     else if focused.entry.onDemand { Text(focused.entry.isPast(at: now) ? "Shown earlier · available on demand" : "Available on demand").font(.system(size: 25, weight: .semibold)).foregroundStyle(.teal) }
@@ -156,6 +166,44 @@ struct ChannelGuideView: View {
                     .font(.system(size: 25)).foregroundStyle(.secondary).lineLimit(2)
             }
         }.frame(maxWidth: .infinity, minHeight: 124, maxHeight: 124, alignment: .topLeading)
+    }
+    private static func dayName(_ date: Date, now: Date) -> String {
+        let calendar = Calendar.current
+        if calendar.isDate(date, inSameDayAs: now) { return "Today" }
+        if let next = calendar.date(byAdding: .day, value: 1, to: now), calendar.isDate(date, inSameDayAs: next) { return "Tomorrow" }
+        if let previous = calendar.date(byAdding: .day, value: -1, to: now), calendar.isDate(date, inSameDayAs: previous) { return "Yesterday" }
+        return date.formatted(.dateTime.weekday(.abbreviated).day())
+    }
+    /// Quick jumps between days: the same time of day on the chosen day; Today returns to now.
+    private func dayPicker(now: Date) -> some View {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: now)
+        let days = (-(hoursBack / 24)...(hoursAhead / 24)).compactMap { calendar.date(byAdding: .day, value: $0, to: today) }
+        let shown = calendar.startOfDay(for: start(now).addingTimeInterval(span / 2))
+        return HStack(spacing: 6) {
+            ForEach(days, id: \.self) { day in
+                let selected = calendar.isDate(day, inSameDayAs: shown)
+                Button { jump(to: day, now: now) } label: { Text(Self.dayName(day, now: now)) }
+                    .buttonStyle(GuideDayStyle(selected: selected))
+                    .focused($focusedDay, equals: day)
+                    .accessibilityAddTraits(selected ? .isSelected : [])
+            }
+        }
+            // Over the timeline, so Down from any day has a programme beneath it.
+            .padding(.leading, channelWidth + gap)
+            .focusSection().accessibilityElement(children: .contain).accessibilityLabel("Day")
+            // Arriving from above or below lands on the day on screen, not the first in the row.
+            .onChange(of: focusedDay) { old, day in
+                if old == nil, day != nil, day != shown { focusedDay = shown }
+            }
+    }
+    private func jump(to day: Date, now: Date) {
+        let calendar = Calendar.current
+        if calendar.isDateInToday(day) { windowStart = nil; focusTime = nil; return }
+        let current = start(now)
+        let target = day.addingTimeInterval(current.timeIntervalSince(calendar.startOfDay(for: current)))
+        windowStart = target
+        focusTime = max(target, earliest(now))
     }
     private static func streamDescription(_ stream: AdditionalLiveStream) -> String {
         let extra = stream.id == "uk_bbc_stream_041" ? "Events in Ultra HD when they're on." : "Extra live coverage when it's on, such as sport and events."
@@ -337,6 +385,28 @@ private struct GuideCellLabel: View {
                 }.opacity(0.75).lineLimit(1)
             }
         }.padding(.horizontal, roomy ? 14 : 0).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    }
+}
+
+/// Slim day choice: the day on screen is pink and underlined; focus is a small white pill.
+private struct GuideDayStyle: ButtonStyle {
+    let selected: Bool
+    func makeBody(configuration: Configuration) -> some View { GuideDayLabel(label: configuration.label, selected: selected) }
+}
+private struct GuideDayLabel<Label: View>: View {
+    let label: Label
+    let selected: Bool
+    @Environment(\.isFocused) private var focused
+    var body: some View {
+        label.font(.system(size: 19, weight: .semibold)).lineLimit(1).fixedSize()
+            .foregroundStyle(focused ? Color.black : selected ? Color.pink : Color.white.opacity(0.6))
+            .padding(.horizontal, 12).padding(.vertical, 5)
+            .background(focused ? Color.white : Color.clear, in: Capsule())
+            .overlay(alignment: .bottom) {
+                if selected && !focused { Capsule().fill(.pink).frame(height: 3).padding(.horizontal, 12).offset(y: 2) }
+            }
+            .animation(.easeOut(duration: 0.12), value: focused)
+            .focusEffectDisabled()
     }
 }
 

@@ -90,6 +90,30 @@ import Foundation
         }
         check(guide.map(\.id) == channels.map(\.id), "Channels keep their order whichever schedule arrives first")
         check(guide[0].entries.count == 2 && guide[2].entries.count == 2 && guide[1].entries.isEmpty, "One unavailable schedule does not hide the others")
-        print("PASS: guide window, schedule parsing, on-demand flags, timeline segments, remote navigation and independent channel loading")
+        // Long ranges page through the schedule until it reaches the requested time, without duplicates.
+        func page(_ start: Int, count: Int) -> Data {
+            let stamp = ISO8601DateFormatter()
+            let items: [[String: Any]] = (0..<count).map { i in
+                let from = at("2026-10-19T00:00:00Z").addingTimeInterval(Double(start + i) * 1800)
+                return ["id": "p\(start + i)", "scheduled_start": stamp.string(from: from),
+                        "scheduled_end": stamp.string(from: from.addingTimeInterval(1800)), "episode": ["title": "T"]]
+            }
+            return try! JSONSerialization.data(withJSONObject: ["broadcasts": ["elements": items]])
+        }
+        var requested = [String]()
+        let paged = await ChannelGuide.load([channels[0]], from: at("2026-10-19T00:00:00Z"), until: at("2026-10-21T00:00:00Z"), perPage: 40) { url in
+            requested.append(url.query ?? "")
+            switch url.query?.components(separatedBy: "&page=").last {
+            case "2": return page(39, count: 40)   // overlaps page 1 by one broadcast
+            case "3": return page(79, count: 40)
+            default: return page(0, count: 40)
+            }
+        }
+        check(requested.count == 3 && requested[1].hasSuffix("&page=2"), "Pages are fetched until the schedule reaches the requested time")
+        check(paged[0].entries.count == 119 && Set(paged[0].entries.map(\.id)).count == 119, "Broadcasts repeated across pages appear once")
+        var single = 0
+        _ = await ChannelGuide.load([channels[0]], from: at("2026-10-19T00:00:00Z"), perPage: 40) { _ in single += 1; return page(0, count: 40) }
+        check(single == 1, "Without an end time only the first page is fetched")
+        print("PASS: guide window, schedule parsing, on-demand flags, timeline segments, remote navigation, paged loading and independent channel loading")
     }
 }
