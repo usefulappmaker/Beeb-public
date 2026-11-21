@@ -50,6 +50,38 @@ import Foundation
         check(late.map { $0.entry?.id ?? "gap" } == ["gap", "b"] && late.map(\.minutes) == [45, 15], "A row starting late opens with a gap")
         check(ChannelGuide.segments(row, from: at("2026-10-19T15:00:00Z"), to: at("2026-10-19T16:00:00Z")).isEmpty, "Nothing scheduled in the window leaves the row empty")
 
+        // Remote navigation: Up and Down land on the programme at the focus time; Left and Right page at the window's edges.
+        func playable(_ id: String, _ start: String, _ end: String, onDemand: Bool = true) -> GuideEntry {
+            GuideEntry(id: id, start: at(start), end: at(end), title: id, subtitle: "", synopsis: "", episodeID: nil, onDemand: onDemand, isRepeat: false)
+        }
+        let day = [playable("past", "2026-10-19T10:00:00Z", "2026-10-19T11:00:00Z", onDemand: false),
+                   playable("morning", "2026-10-19T11:00:00Z", "2026-10-19T12:15:00Z"),
+                   playable("noon", "2026-10-19T12:15:00Z", "2026-10-19T13:00:00Z"),
+                   playable("film", "2026-10-19T13:00:00Z", "2026-10-19T15:30:00Z"),
+                   playable("late", "2026-10-19T15:30:00Z", "2026-10-19T16:00:00Z")]
+        let open = at("2026-10-19T12:00:00Z"), span: TimeInterval = 2.5 * 3600, first = at("2026-10-19T04:00:00Z"), last = at("2026-10-19T18:00:00Z")
+        func land(_ time: String) -> String? { ChannelGuide.landing(in: day, at: at(time), from: open, to: open.addingTimeInterval(span), now: now)?.id }
+        check(land("2026-10-19T12:40:00Z") == "noon", "Up and Down land on the programme showing at the focus time")
+        check(land("2026-10-19T12:00:00Z") == "morning", "A programme that began before the window still counts at its left edge")
+        check(ChannelGuide.landing(in: [day[0]], at: open, from: open.addingTimeInterval(-7200), to: open, now: now) == nil, "A row with nothing playable is skipped")
+        check(ChannelGuide.landing(in: [day[0], day[4]], at: open, from: at("2026-10-19T10:00:00Z"), to: at("2026-10-19T16:00:00Z"), now: now)?.id == "late",
+              "Without a playable programme at the focus time, the nearest playable one is chosen")
+        func page(_ id: String, _ forward: Bool, from start: Date = open) -> (String, Date)? {
+            ChannelGuide.page(day, from: day.first { $0.id == id }!, forward: forward, start: start, span: span, earliest: first, latest: last, now: now).map { ($0.entry.id, $0.start) }
+        }
+        check(page("noon", true) == nil && page("noon", false) == nil, "A neighbour already on screen is left to the focus engine")
+        check(page("film", true).map { $0 == ("late", at("2026-10-19T15:30:00Z")) } == true, "Right at the edge opens the window at the next programme")
+        check(page("morning", false, from: at("2026-10-19T11:00:00Z")) == nil, "Nothing earlier that can be watched: the window stays")
+        check(page("film", false, from: at("2026-10-19T13:00:00Z")).map { $0 == ("noon", at("2026-10-19T10:30:00Z")) } == true,
+              "Left at the edge brings the previous programme's end into view")
+        let long = [playable("marathon", "2026-10-19T06:00:00Z", "2026-10-19T18:00:00Z")]
+        let back = ChannelGuide.page(long, from: long[0], forward: false, start: open, span: span, earliest: first, latest: last, now: now)
+        check(back?.entry.id == "marathon" && back!.start == at("2026-10-19T10:00:00Z"), "With nothing beyond a long programme, Left scrolls through it and keeps it focused")
+        let ahead = ChannelGuide.page(long, from: long[0], forward: true, start: open, span: span, earliest: first, latest: last, now: now)
+        check(ahead?.entry.id == "marathon" && ahead!.start == at("2026-10-19T14:00:00Z"), "Right scrolls through it too")
+        check(ChannelGuide.page(long, from: long[0], forward: true, start: last.addingTimeInterval(-span), span: span, earliest: first, latest: last, now: now) == nil,
+              "Scrolling stops at the end of the guide")
+
         let channels = [LiveChannel(id: "bbc_one_london", title: "BBC One"), LiveChannel(id: "bbc_two_england", title: "BBC Two"), LiveChannel(id: "bbc_four", title: "BBC Four")]
         let guide = await ChannelGuide.load(channels, from: at("2026-10-19T04:00:00Z"), perPage: 100) { url in
             guard url.absoluteString.hasSuffix("/broadcasts?per_page=100&from_date=2026-10-19T04:00") else { throw BBCError.message("Unexpected schedule request") }
@@ -58,6 +90,6 @@ import Foundation
         }
         check(guide.map(\.id) == channels.map(\.id), "Channels keep their order whichever schedule arrives first")
         check(guide[0].entries.count == 2 && guide[2].entries.count == 2 && guide[1].entries.isEmpty, "One unavailable schedule does not hide the others")
-        print("PASS: guide window, schedule parsing, on-demand flags, timeline segments and independent channel loading")
+        print("PASS: guide window, schedule parsing, on-demand flags, timeline segments, remote navigation and independent channel loading")
     }
 }

@@ -1013,7 +1013,9 @@ struct LiveView: View {
                 VStack(alignment: .leading, spacing: 24) {
                     header
                     ChannelGuideView(channels: visibleChannels,
+                                     additionalStreams: profileStore.kidsMode ? [] : AdditionalLiveStream.all,
                                      playLive: { play($0) },
+                                     playStream: { stream in playback.startAdditional(stream) { state.playing = true } },
                                      playEpisode: { programme in
                                          if profileStore.kidsMode && !(programme.guidance ?? "").isEmpty {
                                              state.error = "This programme isn't available on a kids profile."; return
