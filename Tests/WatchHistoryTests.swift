@@ -57,6 +57,30 @@ import Foundation
         precondition(corrupt.records.isEmpty && corrupt.warning != nil, "Corrupt history does not prevent launch")
         corrupt.update(episode: one, show: show, next: two, position: 15, duration: 3600)
         precondition(corrupt.warning == nil && WatchHistory(defaults: defaults).records.count == 1, "New progress recovers from corrupt storage")
-        print("PASS: resume persistence, compact programme history, completion/up-next, reverse series order, broadcast dates, restart, removal, invalid-time and corruption recovery")
+        // Per-episode progress: watched and part-watched marks survive moving on to later episodes.
+        let episodeSuite = "BeebEpisodeTests-" + UUID().uuidString
+        let episodeDefaults = UserDefaults(suiteName: episodeSuite)!
+        defer { episodeDefaults.removePersistentDomain(forName: episodeSuite) }
+        let marks = WatchHistory(defaults: episodeDefaults)
+        marks.update(episode: one, show: show, next: two, position: 3590, duration: 3600, ended: true)
+        marks.update(episode: two, show: show, next: three, position: 900, duration: 3600)
+        precondition(marks.progress(for: one.id)?.completed == true, "A finished episode stays watched after moving on")
+        precondition(marks.progress(for: two.id).map { !$0.completed && abs($0.fraction - 0.25) < 0.01 } == true, "A part-watched episode keeps its progress")
+        marks.update(episode: one, show: show, next: two, position: 60, duration: 3600)
+        precondition(marks.progress(for: one.id)?.completed == true, "Rewatching the start doesn't un-mark a finished episode")
+        marks.setWatched(three.id, true)
+        precondition(marks.progress(for: three.id)?.completed == true, "Mark watched")
+        marks.setWatched(one.id, false)
+        precondition(marks.progress(for: one.id) == nil, "Mark unwatched forgets the episode's progress")
+        let now = Date().timeIntervalSinceReferenceDate
+        marks.adoptEpisodes(["records": [["id": "b0000099", "position": 10.0, "duration": 100.0, "completed": false, "updatedAt": now + 10]],
+                             "removed": [two.id: now + 100]])
+        precondition(marks.progress(for: "b0000099")?.position == 10, "Progress from another Apple TV is adopted")
+        precondition(marks.progress(for: two.id) == nil, "A newer Mark unwatched from another Apple TV removes local progress")
+        marks.adoptEpisodes(["records": [["id": three.id, "position": 1.0, "duration": 100.0, "completed": false, "updatedAt": now - 1000]], "removed": [:]])
+        precondition(marks.progress(for: three.id)?.completed == true, "Older remote progress doesn't overwrite a newer local mark")
+        let reloaded = WatchHistory(defaults: episodeDefaults)
+        precondition(reloaded.progress(for: three.id)?.completed == true && reloaded.progress(for: one.id) == nil, "Episode marks are kept")
+        print("PASS: resume persistence, compact programme history, completion/up-next, reverse series order, broadcast dates, restart, removal, invalid-time and corruption recovery, per-episode watched marks and their sync")
     }
 }

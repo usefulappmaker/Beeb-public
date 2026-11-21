@@ -20,7 +20,7 @@ import time
 import appdaemon.plugins.hass.hassapi as hass
 
 SWIFT_EPOCH = 978307200
-LIMITS = {"history": 60, "saved": 300, "profiles": 50, "settings": 20}
+LIMITS = {"history": 60, "saved": 300, "profiles": 50, "settings": 20, "channels": 200, "episodes": 600}
 REMOVED_DAYS = 90
 SLUG = re.compile(r"^[a-z0-9_]{1,32}$")
 

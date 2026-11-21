@@ -20,6 +20,8 @@ struct TopShelfEntry: Codable, Hashable {
 struct TopShelfSnapshot: Codable, Equatable {
     var continueWatching: [TopShelfEntry] = []
     var saved: [TopShelfEntry] = []
+    /// The current profile's favourite channels, in order: they lead the Live TV row.
+    var favouriteChannels: [String]? = nil
 }
 
 /// The app writes a small snapshot of Saved and Continue Watching into the shared

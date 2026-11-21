@@ -16,6 +16,16 @@ struct WatchRecord: Codable, Identifiable {
     var remainingMinutes: Int { max(1, Int(ceil((duration - position) / 60))) }
 }
 
+/// How far one episode has been watched, so programme pages can mark watched and part-watched episodes.
+/// Completion is sticky: rewatching the start of a finished episode doesn't un-mark it (Mark unwatched does).
+struct EpisodeProgress: Codable, Equatable {
+    var position: Double
+    var duration: Double
+    var completed: Bool
+    var updatedAt: Date
+    var fraction: Double { min(1, max(0, position / max(1, duration))) }
+}
+
 enum EpisodeSequence {
     private static func number(_ text: String, pattern: String) -> Int? {
         guard let expression = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
@@ -90,6 +100,12 @@ enum EpisodeSequence {
     private static var key: String { "continueWatching-v1-" + ProfileStore.currentID }
     private static var removedKey: String { "continueWatching-removed-v1-" + ProfileStore.currentID }
     private var removed: [String: Date] = [:]
+    /// Per-episode progress (Continue Watching keeps one record per programme, so earlier episodes would be forgotten).
+    @Published private(set) var episodes: [String: EpisodeProgress] = [:]
+    private var episodesRemoved: [String: Date] = [:]
+    private static var episodesKey: String { "episodeProgress-v1-" + ProfileStore.currentID }
+    private static var episodesRemovedKey: String { "episodeProgress-removed-v1-" + ProfileStore.currentID }
+    static let episodeLimit = 600
     private var syncTask: Task<Void, Never>?
     private var lastSync = Date.distantPast
     private var observers: [NSObjectProtocol] = []
@@ -110,6 +126,39 @@ enum EpisodeSequence {
         }
         if let data = defaults.data(forKey: Self.removedKey),
            let saved = try? JSONDecoder().decode([String: Date].self, from: data) { removed = saved }
+        episodes = [:]; episodesRemoved = [:]
+        if let data = defaults.data(forKey: Self.episodesKey),
+           let saved = try? JSONDecoder().decode([String: EpisodeProgress].self, from: data) { episodes = saved.filter { $0.value.duration > 0 } }
+        if let data = defaults.data(forKey: Self.episodesRemovedKey),
+           let saved = try? JSONDecoder().decode([String: Date].self, from: data) { episodesRemoved = saved }
+    }
+    func progress(for episodeID: String) -> EpisodeProgress? { episodes[episodeID] }
+    /// Mark watched / Mark unwatched on the episode screen. Unwatched forgets the episode's progress.
+    func setWatched(_ episodeID: String, _ watched: Bool, now: Date = Date()) {
+        if watched {
+            var value = episodes[episodeID] ?? EpisodeProgress(position: 1, duration: 1, completed: true, updatedAt: now)
+            value.completed = true; value.position = value.duration; value.updatedAt = now
+            episodes[episodeID] = value; episodesRemoved[episodeID] = nil
+        } else {
+            episodes[episodeID] = nil; episodesRemoved[episodeID] = now
+        }
+        persistEpisodes()
+    }
+    private func recordEpisode(_ id: String, position: Double, duration: Double, completed: Bool, now: Date) {
+        var value = episodes[id] ?? EpisodeProgress(position: 0, duration: duration, completed: false, updatedAt: now)
+        if abs(value.position - position) < 0.5, value.duration == duration, value.completed || !completed { return }
+        value.position = min(position, duration); value.duration = duration
+        value.completed = value.completed || completed; value.updatedAt = now
+        episodes[id] = value; episodesRemoved[id] = nil
+        if episodes.count > Self.episodeLimit {
+            for key in episodes.sorted(by: { $0.value.updatedAt < $1.value.updatedAt }).prefix(episodes.count - Self.episodeLimit).map(\.key) { episodes[key] = nil }
+        }
+        persistEpisodes()
+    }
+    private func persistEpisodes() {
+        if let data = try? JSONEncoder().encode(episodes) { defaults.set(data, forKey: Self.episodesKey) }
+        if let data = try? JSONEncoder().encode(episodesRemoved) { defaults.set(data, forKey: Self.episodesRemovedKey) }
+        scheduleHASync()
     }
     static func isComplete(position: Double, duration: Double, ended: Bool = false) -> Bool {
         guard position.isFinite, duration.isFinite, duration > 0 else { return false }
@@ -123,6 +172,7 @@ enum EpisodeSequence {
         guard position.isFinite, duration.isFinite, duration > 0, position >= 0, position >= 5 || ended else { return }
         let id = show?.id ?? episode.programme.showID ?? episode.id
         let completed = Self.isComplete(position: position, duration: duration, ended: ended)
+        recordEpisode(episode.id, position: position, duration: duration, completed: completed, now: now)
         if let old = records.first(where: { $0.id == id }), old.episode.id == episode.id,
            abs(old.position - position) < 0.5, old.completed == completed { return }
         var compact = show
@@ -189,6 +239,42 @@ enum EpisodeSequence {
                                                         removed: removed.mapValues { $0.timeIntervalSinceReferenceDate }),
               profile == ProfileStore.currentID else { return }   // ignore a reply for a profile we've switched away from
         adopt(reply)
+        let episodeRecords: [[String: Any]] = episodes.map { id, value in
+            ["id": id, "position": value.position, "duration": value.duration, "completed": value.completed,
+             "updatedAt": value.updatedAt.timeIntervalSinceReferenceDate]
+        }
+        guard let episodeReply = await BeebSyncClient.exchange(kind: "episodes", profile: profile, records: episodeRecords,
+                                                               removed: episodesRemoved.mapValues { $0.timeIntervalSinceReferenceDate }),
+              profile == ProfileStore.currentID else { return }
+        adoptEpisodes(episodeReply)
+    }
+    /// Per episode the newest change wins; Mark unwatched (a removal) wins over progress that isn't newer.
+    func adoptEpisodes(_ reply: [String: Any]) {
+        var merged = episodes
+        for item in reply["records"] as? [[String: Any]] ?? [] {
+            guard let id = item["id"] as? String, let duration = item["duration"] as? Double, duration > 0, duration.isFinite,
+                  let position = item["position"] as? Double, position.isFinite else { continue }
+            let value = EpisodeProgress(position: max(0, min(position, duration)), duration: duration,
+                                        completed: item["completed"] as? Bool ?? false,
+                                        updatedAt: Date(timeIntervalSinceReferenceDate: item["updatedAt"] as? Double ?? 0))
+            if merged[id].map({ value.updatedAt > $0.updatedAt }) ?? true { merged[id] = value }
+        }
+        var gone = episodesRemoved
+        for (id, t) in reply["removed"] as? [String: Double] ?? [:] {
+            let date = Date(timeIntervalSinceReferenceDate: t)
+            if gone[id].map({ date > $0 }) ?? true { gone[id] = date }
+        }
+        for (id, t) in gone {
+            if let value = merged[id] { if value.updatedAt > t { gone[id] = nil } else { merged[id] = nil } }
+        }
+        if merged.count > Self.episodeLimit {
+            for key in merged.sorted(by: { $0.value.updatedAt < $1.value.updatedAt }).prefix(merged.count - Self.episodeLimit).map(\.key) { merged[key] = nil }
+        }
+        if merged != episodes || gone != episodesRemoved {
+            episodes = merged; episodesRemoved = gone
+            if let data = try? JSONEncoder().encode(episodes) { defaults.set(data, forKey: Self.episodesKey) }
+            if let data = try? JSONEncoder().encode(episodesRemoved) { defaults.set(data, forKey: Self.episodesRemovedKey) }
+        }
     }
     /// Merge the server's state with whatever changed locally while the request was in flight.
     private func adopt(_ reply: [String: Any]) {
