@@ -200,7 +200,8 @@ struct ChannelGuideView: View {
                                 let cellWidth = CGFloat(segment.minutes) * pointsPerMinute
                                 if let entry = segment.entry {
                                     cell(entry, on: row.channel, width: cellWidth, continues: entry.start < start, now: now,
-                                         reachable: currentRow == row.id || landing?.id == entry.id)
+                                         reachable: currentRow == row.id || landing?.id == entry.id,
+                                         growsLeft: x(segment.start) + Self.expandedWidth > width)
                                 }
                                 else { Color.clear.frame(width: cellWidth, height: rowHeight) }
                             }
@@ -248,8 +249,11 @@ struct ChannelGuideView: View {
             .padding(.horizontal, 18).frame(width: channelWidth, height: rowHeight, alignment: .leading)
             .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 12))
     }
-    @ViewBuilder private func cell(_ entry: GuideEntry, on channel: LiveChannel, width: CGFloat, continues: Bool, now: Date, reachable: Bool) -> some View {
+    /// A focused programme narrower than this shows a wider copy over its neighbours, so its title can be read in place.
+    private static let expandedWidth: CGFloat = 340
+    @ViewBuilder private func cell(_ entry: GuideEntry, on channel: LiveChannel, width: CGFloat, continues: Bool, now: Date, reachable: Bool, growsLeft: Bool) -> some View {
         let onAir = entry.isOnAir(at: now)
+        let expanded = focusedCell == cellID(channel, entry) && width - 6 < Self.expandedWidth
         if !ChannelGuide.playable(entry, at: now) {
             // No longer playable: keep its place on the timeline, but out of the remote's path.
             GuideCellLabel(entry: entry, onAir: false, roomy: width >= 120, continues: continues)
@@ -262,7 +266,22 @@ struct ChannelGuideView: View {
                 .buttonStyle(GuideCellStyle(onAir: onAir, onDemand: entry.onDemand))
                 .focused($focusedCell, equals: cellID(channel, entry))
                 .disabled(!reachable)   // the style ignores this: only the remote's path changes
-                .frame(width: max(6, width - 6), height: rowHeight).padding(.trailing, 6)
+                .frame(width: max(6, width - 6), height: rowHeight)
+                // Drawn over the neighbours without changing the cell's frame, so the remote's path stays the same.
+                .overlay(alignment: growsLeft ? .trailing : .leading) {
+                    if expanded {
+                        GuideCellLabel(entry: entry, onAir: onAir, roomy: true, continues: continues)
+                            .foregroundStyle(.black)
+                            .frame(width: Self.expandedWidth, height: rowHeight)
+                            .background(.white, in: RoundedRectangle(cornerRadius: 12))
+                            .shadow(color: .pink.opacity(0.55), radius: 14)
+                            .allowsHitTesting(false).accessibilityHidden(true)
+                            .transition(.opacity)
+                    }
+                }
+                .animation(.easeOut(duration: 0.12), value: expanded)
+                .padding(.trailing, 6)
+                .zIndex(expanded ? 1 : 0)
                 .accessibilityLabel("\(entry.title), \(channel.title), \(ChannelGuide.times(entry))")
         }
     }
