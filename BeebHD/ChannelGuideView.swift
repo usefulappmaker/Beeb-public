@@ -23,6 +23,10 @@ struct ChannelGuideView: View {
     @State private var selection: GuideSelection?
     @FocusState private var focusedCell: String?
     @FocusState private var focusedDay: Date?
+    /// When focus last moved: a press followed by no move is one the focus engine couldn't place.
+    @State private var lastFocusMove = Date.distantPast
+    /// When focus last left the day row, to tell entering the guide from below the days from returning to it.
+    @State private var leftDays = Date.distantPast
     /// Start of the time on screen; nil follows the present.
     @State private var windowStart: Date?
     /// The time Up and Down aim for; nil means now.
@@ -107,6 +111,7 @@ struct ChannelGuideView: View {
             }
         }
         .onChange(of: focusedCell) { old, cell in
+            lastFocusMove = Date()
             guard let cell else { return }
             if cell.hasPrefix(Self.edgePrefix) {
                 // Left from the first programme on screen: page back, or return to where focus was.
@@ -114,7 +119,16 @@ struct ChannelGuideView: View {
                 focusedCell = old
                 return
             }
+            // The focus engine can skip a row whose programme is off to one side: land on the nearest row instead.
+            if old == nil {
+                // Arriving from the day row: check once both focus changes have been applied.
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 30_000_000)
+                    if focusedCell == cell, let expected = expectedLanding(from: nil, to: cell), expected != cell { focusedCell = expected }
+                }
+            } else if let expected = expectedLanding(from: old, to: cell), expected != cell { focusedCell = expected; return }
             // Left and Right set the time Up and Down aim for; moving between rows keeps it.
+            if focusTime == nil, let entry = locate(cell)?.entry { focusTime = max(entry.start, start(Date())) }
             if let old, rowID(old) == rowID(cell), let entry = locate(cell)?.entry {
                 focusTime = max(entry.start, start(Date()))
             }
@@ -155,6 +169,7 @@ struct ChannelGuideView: View {
                     Text(focused.channel.title).font(.system(size: 25)).foregroundStyle(.secondary)
                     if focused.entry.isOnAir(at: now) { Text("On now").font(.system(size: 25, weight: .semibold)).foregroundStyle(.pink) }
                     else if focused.entry.onDemand { Text(focused.entry.isPast(at: now) ? "Shown earlier · available on demand" : "Available on demand").font(.system(size: 25, weight: .semibold)).foregroundStyle(.teal) }
+                    else if focused.entry.isPast(at: now) { Text("Shown earlier · not available").font(.system(size: 25, weight: .semibold)).foregroundStyle(.secondary) }
                 }
                 Text(focused.entry.synopsis).font(.system(size: 25)).foregroundStyle(.secondary).lineLimit(2)
             } else if let stream = focusedStream {
@@ -189,12 +204,16 @@ struct ChannelGuideView: View {
                     .accessibilityAddTraits(selected ? .isSelected : [])
             }
         }
-            // Over the timeline, so Down from any day has a programme beneath it.
+            // Over the timeline, so Down from any day has a programme beneath it; the section spans the full
+            // width so Up from anywhere in the guide reaches the days rather than the top bar.
             .padding(.leading, channelWidth + gap)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .focusSection().accessibilityElement(children: .contain).accessibilityLabel("Day")
-            .onMoveCommand { direction in if direction == .down { ensureVerticalMove(true, from: nil) } }
+            .onMoveCommand { direction in if direction == .down { ensureVerticalMove(true) } }
             // Arriving from above or below lands on the day on screen, not the first in the row.
             .onChange(of: focusedDay) { old, day in
+                lastFocusMove = Date()
+                if day == nil { leftDays = Date() }
                 if old == nil, day != nil, day != shown { focusedDay = shown }
             }
     }
@@ -243,7 +262,7 @@ struct ChannelGuideView: View {
                     ForEach(guide) { row in
                         // Away from the focused row only the programme at the focus time takes focus,
                         // so Up and Down land in the same column.
-                        let landing = currentRow == row.id ? nil : ChannelGuide.landing(in: row.entries, at: aim, from: start, to: end, now: now)
+                        let landing = currentRow == row.id ? nil : ChannelGuide.landing(in: row.entries, at: aim, from: start, to: end)
                         HStack(spacing: 0) {
                             ForEach(ChannelGuide.segments(row.entries, from: start, to: end)) { segment in
                                 let cellWidth = CGFloat(segment.minutes) * pointsPerMinute
@@ -266,7 +285,7 @@ struct ChannelGuideView: View {
                     }
                 }
                 .onMoveCommand { direction in
-                    if direction == .up || direction == .down { ensureVerticalMove(direction == .down, from: focusedCell); return }
+                    if direction == .up || direction == .down { ensureVerticalMove(direction == .down); return }
                     // Right at the window's edge; Left is caught by the channel name.
                     guard direction == .right, let (row, entry) = locate(focusedCell) else { return }
                     move(row, entry, forward: true)
@@ -279,19 +298,32 @@ struct ChannelGuideView: View {
         let start = start(now), end = start.addingTimeInterval(span)
         let aim = min(max(focusTime ?? now, start), end.addingTimeInterval(-60))
         return guide.compactMap { row in
-            ChannelGuide.landing(in: row.entries, at: aim, from: start, to: end, now: now).map { (row.id, cellID(row.channel, $0)) }
+            ChannelGuide.landing(in: row.entries, at: aim, from: start, to: end).map { (row.id, cellID(row.channel, $0)) }
         } + additionalStreams.map { (Self.streamPrefix + $0.id, Self.streamPrefix + $0.id) }
     }
+    /// After a move between rows (or down from the day row), the cell that should have taken focus.
+    private func expectedLanding(from old: String?, to cell: String) -> String? {
+        let order = guide.map(\.id) + additionalStreams.map { Self.streamPrefix + $0.id }
+        guard let new = rowID(cell), !cell.hasPrefix(Self.edgePrefix), let to = order.firstIndex(of: new) else { return nil }
+        let rows = landings(now: Date())
+        if old == nil {   // entering from the day row: the first row with something to land on
+            guard Date().timeIntervalSince(leftDays) < 0.3 else { return nil }
+            return rows.first?.cell
+        }
+        guard let old, !old.hasPrefix(Self.edgePrefix), let previous = rowID(old), previous != new, let from = order.firstIndex(of: previous) else { return nil }
+        let between = to > from ? Array(order[(from + 1)...to]) : Array(order[to..<from].reversed())
+        return between.lazy.compactMap { id in rows.first { $0.row == id }?.cell }.first
+    }
     /// The focus engine only moves to something roughly beneath the focus. When the programme to land on is off to
-    /// one side (the one at the focus time is greyed out), it doesn't move at all, so move focus here instead.
-    private func ensureVerticalMove(_ down: Bool, from cell: String?) {
-        let day = focusedDay
+    /// one side (the one at the focus time is greyed out), the press goes nowhere, so move focus here instead.
+    /// The press is reported after any move it made, so only act when focus hasn't moved at all.
+    private func ensureVerticalMove(_ down: Bool) {
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 80_000_000)
-            guard focusedCell == cell, focusedDay == day else { return }   // focus moved by itself
+            guard Date().timeIntervalSince(lastFocusMove) > 0.3 else { return }
             let now = Date(), rows = landings(now: now)
-            guard let cell else {   // from the day row into the guide
-                if day != nil, let first = rows.first { focusedCell = first.cell }
+            guard let cell = focusedCell else {   // from the day row into the guide
+                if down, focusedDay != nil, let first = rows.first { focusedCell = first.cell }
                 return
             }
             // Rows above or below the current one, nearest first.
@@ -302,11 +334,11 @@ struct ChannelGuideView: View {
             else if !down { focusedDay = Calendar.current.startOfDay(for: start(now).addingTimeInterval(span / 2)) }
         }
     }
-    /// Left or Right at the edge of the window: move it to the next playable programme and focus that.
+    /// Left or Right at the edge of the window: move it to the next programme and focus that.
     @discardableResult private func move(_ row: GuideChannel, _ entry: GuideEntry, forward: Bool) -> Bool {
         let now = Date()
         guard let move = ChannelGuide.page(row.entries, from: entry, forward: forward, start: start(now), span: span,
-                                           earliest: earliest(now), latest: latest(now), now: now) else { return false }
+                                           earliest: earliest(now), latest: latest(now)) else { return false }
         let target = cellID(row.channel, move.entry)
         withTransaction(Transaction(animation: nil)) {
             windowStart = move.start
@@ -329,39 +361,32 @@ struct ChannelGuideView: View {
     }
     /// A focused programme narrower than this shows a wider copy over its neighbours, so its title can be read in place.
     private static let expandedWidth: CGFloat = 340
-    @ViewBuilder private func cell(_ entry: GuideEntry, on channel: LiveChannel, width: CGFloat, continues: Bool, now: Date, reachable: Bool, growsLeft: Bool) -> some View {
+    private func cell(_ entry: GuideEntry, on channel: LiveChannel, width: CGFloat, continues: Bool, now: Date, reachable: Bool, growsLeft: Bool) -> some View {
         let onAir = entry.isOnAir(at: now)
         let expanded = focusedCell == cellID(channel, entry) && width - 6 < Self.expandedWidth
-        if !ChannelGuide.playable(entry, at: now) {
-            // No longer playable: keep its place on the timeline, but out of the remote's path.
-            GuideCellLabel(entry: entry, onAir: false, roomy: width >= 120, continues: continues)
-                .foregroundStyle(.white.opacity(0.35))
-                .background(.white.opacity(0.03), in: RoundedRectangle(cornerRadius: 12))
-                .frame(width: max(6, width - 6), height: rowHeight).padding(.trailing, 6)
-                .accessibilityHidden(true)
-        } else {
-            Button { activate(entry, on: channel) } label: { GuideCellLabel(entry: entry, onAir: onAir, roomy: width >= 120, continues: continues) }
-                .buttonStyle(GuideCellStyle(onAir: onAir, onDemand: entry.onDemand))
-                .focused($focusedCell, equals: cellID(channel, entry))
-                .disabled(!reachable)   // the style ignores this: only the remote's path changes
-                .frame(width: max(6, width - 6), height: rowHeight)
-                // Drawn over the neighbours without changing the cell's frame, so the remote's path stays the same.
-                .overlay(alignment: growsLeft ? .trailing : .leading) {
-                    if expanded {
-                        GuideCellLabel(entry: entry, onAir: onAir, roomy: true, continues: continues)
-                            .foregroundStyle(.black)
-                            .frame(width: Self.expandedWidth, height: rowHeight)
-                            .background(.white, in: RoundedRectangle(cornerRadius: 12))
-                            .shadow(color: .pink.opacity(0.55), radius: 14)
-                            .allowsHitTesting(false).accessibilityHidden(true)
-                            .transition(.opacity)
-                    }
+        let available = ChannelGuide.playable(entry, at: now)
+        return Button { activate(entry, on: channel) } label: { GuideCellLabel(entry: entry, onAir: onAir, roomy: width >= 120, continues: continues) }
+            // No longer watchable: greyed out, but it still takes focus so Up and Down keep their column.
+            .buttonStyle(GuideCellStyle(onAir: onAir, onDemand: entry.onDemand, unavailable: !available))
+            .focused($focusedCell, equals: cellID(channel, entry))
+            .disabled(!reachable)   // the style ignores this: only the remote's path changes
+            .frame(width: max(6, width - 6), height: rowHeight)
+            // Drawn over the neighbours without changing the cell's frame, so the remote's path stays the same.
+            .overlay(alignment: growsLeft ? .trailing : .leading) {
+                if expanded {
+                    GuideCellLabel(entry: entry, onAir: onAir, roomy: true, continues: continues)
+                        .foregroundStyle(.black)
+                        .frame(width: Self.expandedWidth, height: rowHeight)
+                        .background(available ? Color.white : Color(white: 0.6), in: RoundedRectangle(cornerRadius: 12))
+                        .shadow(color: .pink.opacity(0.55), radius: 14)
+                        .allowsHitTesting(false).accessibilityHidden(true)
+                        .transition(.opacity)
                 }
-                .animation(.easeOut(duration: 0.12), value: expanded)
-                .padding(.trailing, 6)
-                .zIndex(expanded ? 1 : 0)
-                .accessibilityLabel("\(entry.title), \(channel.title), \(ChannelGuide.times(entry))")
-        }
+            }
+            .animation(.easeOut(duration: 0.12), value: expanded)
+            .padding(.trailing, 6)
+            .zIndex(expanded ? 1 : 0)
+            .accessibilityLabel("\(entry.title), \(channel.title), \(ChannelGuide.times(entry))" + (available ? "" : ", not available"))
     }
     private func streamCell(_ stream: AdditionalLiveStream, width: CGFloat) -> some View {
         Button { playStream(stream) } label: {
@@ -450,8 +475,10 @@ private struct GuideCellStyle: ButtonStyle {
     let onAir: Bool
     /// On iPlayer already: tinted so it stands apart from later programmes that cannot be played yet.
     let onDemand: Bool
+    /// Shown earlier and not on iPlayer: greyed out.
+    var unavailable = false
     func makeBody(configuration: Configuration) -> some View {
-        GuideCellSurface(content: configuration.label, pressed: configuration.isPressed, onAir: onAir, onDemand: onDemand)
+        GuideCellSurface(content: configuration.label, pressed: configuration.isPressed, onAir: onAir, onDemand: onDemand, unavailable: unavailable)
     }
 }
 private struct GuideCellSurface<Content: View>: View {
@@ -459,12 +486,17 @@ private struct GuideCellSurface<Content: View>: View {
     let pressed: Bool
     let onAir: Bool
     let onDemand: Bool
+    let unavailable: Bool
     @Environment(\.isFocused) private var focused
+    private var fill: Color {
+        if unavailable { return focused ? Color(white: 0.6) : Color.white.opacity(0.03) }
+        return focused ? Color.white : onAir ? Color.pink.opacity(0.3) : onDemand ? Color.teal.opacity(0.3) : Color.white.opacity(0.08)
+    }
     var body: some View {
-        content.foregroundStyle(focused ? Color.black : Color.white)
-            .background(focused ? Color.white : onAir ? Color.pink.opacity(0.3) : onDemand ? Color.teal.opacity(0.3) : Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+        content.foregroundStyle(focused ? Color.black : unavailable ? Color.white.opacity(0.35) : Color.white)
+            .background(fill, in: RoundedRectangle(cornerRadius: 12))
             .clipShape(RoundedRectangle(cornerRadius: 12))
-            .shadow(color: .pink.opacity(focused ? 0.55 : 0), radius: 14)
+            .shadow(color: .pink.opacity(focused && !unavailable ? 0.55 : 0), radius: 14)
             .opacity(pressed ? 0.7 : 1)
             .animation(.easeOut(duration: 0.12), value: focused)
             .focusEffectDisabled()

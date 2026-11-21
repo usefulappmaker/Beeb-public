@@ -101,22 +101,24 @@ enum ChannelGuide {
     static func halfHour(_ date: Date, roundingUp: Bool = false) -> Date {
         Date(timeIntervalSinceReferenceDate: (date.timeIntervalSinceReferenceDate / 1800).rounded(roundingUp ? .up : .down) * 1800)
     }
-    /// The programme to land on in a row: the playable one showing at `time`, else the nearest playable one on screen.
-    static func landing(in entries: [GuideEntry], at time: Date, from start: Date, to end: Date, now: Date) -> GuideEntry? {
-        let shown = segments(entries, from: start, to: end).compactMap(\.entry).filter { playable($0, at: now) }
+    /// The programme to land on in a row: the one showing at `time`, else the nearest one on screen. Programmes that
+    /// can no longer be watched take focus too (greyed out), so Up and Down always have something directly beneath.
+    static func landing(in entries: [GuideEntry], at time: Date, from start: Date, to end: Date) -> GuideEntry? {
+        let shown = segments(entries, from: start, to: end).compactMap(\.entry)
         func distance(_ entry: GuideEntry) -> TimeInterval {
-            entry.isOnAir(at: time) ? 0 : min(abs(entry.start.timeIntervalSince(time)), abs(entry.end.timeIntervalSince(time)))
+            // The programme showing at `time` wins outright, including over one that ends exactly then.
+            entry.isOnAir(at: time) ? -1 : min(abs(entry.start.timeIntervalSince(time)), abs(entry.end.timeIntervalSince(time)))
         }
         return shown.min { distance($0) < distance($1) }
     }
-    /// Left or Right from `focused`: where the window moves and what to focus there. Nil when the next playable
-    /// programme that way is already on screen (the focus engine moves to it) or there is none in the guide.
+    /// Left or Right from `focused`: where the window moves and what to focus there. Nil when the next programme
+    /// that way is already on screen (the focus engine moves to it) or there is none in the guide.
     static func page(_ entries: [GuideEntry], from focused: GuideEntry, forward: Bool, start: Date, span: TimeInterval,
-                     earliest: Date, latest: Date, now: Date) -> (start: Date, entry: GuideEntry)? {
+                     earliest: Date, latest: Date) -> (start: Date, entry: GuideEntry)? {
         let shown = Set(segments(entries, from: start, to: start.addingTimeInterval(span)).compactMap { $0.entry?.id })
-        let candidates = entries.filter { playable($0, at: now) && $0.end > earliest && $0.start < latest }
+        let candidates = entries.filter { $0.end > earliest && $0.start < latest }
         let lastStart = max(earliest, latest.addingTimeInterval(-span))
-        // Nothing playable beyond a long programme: scroll through it, keeping it focused, so the other rows can be seen.
+        // Nothing beyond a long programme: scroll through it, keeping it focused, so the other rows can be seen.
         let step = max(1800, halfHour(start.addingTimeInterval(span)).timeIntervalSince(start) - 1800)
         if forward {
             guard let next = candidates.first(where: { $0.start >= focused.end }) else {
