@@ -90,6 +90,8 @@ xcodebuild -project BeebMac.xcodeproj -scheme BeebMac -configuration Release \
   -allowProvisioningUpdates build
 ```
 
+**Window → Stream Info** (⌥⌘I, or the button in the player's title bar) shows what is actually being received and shown, updated every second: resolution, codec, bit depth, the colour tags AVFoundation reports, audio format, bitrate, buffer, stalls, and whether the display is giving HDR headroom. It never includes stream URLs, so its Copy button is safe for issue reports. In a Debug build, `BEEB_MAC_STREAM_INFO=1` opens it at launch.
+
 `./build-mac.sh` builds the unsigned Release app and packages `build/Beeb-<version>-mac-unsigned.zip` for a GitHub Release.
 
 A development-signed build is required for normal use: Enable BBC UHD stores its identity in the data protection keychain, which macOS only opens to an app signed with its keychain access group. To check that the sources compile without an Apple account, add `CODE_SIGNING_ALLOWED=NO` in place of the signing settings; that build starts, but is not suitable for UHD setup.
