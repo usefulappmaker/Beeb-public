@@ -70,20 +70,72 @@ enum ChannelGuide {
         }.sorted { $0.start < $1.start }
     }
     /// Independent channel schedules; one unavailable feed must not hide the others.
-    static func load(_ channels: [LiveChannel], from origin: Date? = nil, perPage: Int = 50,
+    /// With `until`, further pages are fetched (up to `maxPages`) until the schedule reaches that time.
+    static func load(_ channels: [LiveChannel], from origin: Date? = nil, until: Date? = nil, perPage: Int = 50, maxPages: Int = 12,
                      fetch: @escaping (URL) async throws -> Data = { try await BBCService().fetch($0) }) async -> [GuideChannel] {
         let since = origin.map { "&from_date=" + stamp($0) } ?? ""
         return await withTaskGroup(of: (Int, GuideChannel).self) { group in
             for (index, channel) in channels.enumerated() {
                 group.addTask {
-                    let url = URL(string: "https://ibl.api.bbc.co.uk/ibl/v1/channels/\(channel.id)/broadcasts?per_page=\(perPage)\(since)")!
-                    let data = try? await fetch(url)
-                    return (index, GuideChannel(channel: channel, entries: data.map(entries) ?? []))
+                    var collected = [GuideEntry](), seen = Set<String>()
+                    for page in 1...max(1, maxPages) {
+                        let url = URL(string: "https://ibl.api.bbc.co.uk/ibl/v1/channels/\(channel.id)/broadcasts?per_page=\(perPage)\(since)" + (page > 1 ? "&page=\(page)" : ""))!
+                        guard let data = try? await fetch(url) else { break }
+                        let batch = entries(data)
+                        collected += batch.filter { seen.insert($0.id).inserted }
+                        // A short page is the end of the schedule; stop once it reaches the requested time.
+                        guard let until, batch.count >= perPage / 2, let last = batch.last, last.end < until else { break }
+                    }
+                    return (index, GuideChannel(channel: channel, entries: collected.sorted { $0.start < $1.start }))
                 }
             }
             var results = [(Int, GuideChannel)]()
             for await value in group { results.append(value) }
             return results.sorted { $0.0 < $1.0 }.map(\.1)
+        }
+    }
+    /// Remote navigation shows a fixed stretch of time that pages at its edges. Up and Down keep a
+    /// focus time, so moving between channels stays in the same column instead of jumping to
+    /// whichever programme the focus engine reaches first.
+    static func playable(_ entry: GuideEntry, at now: Date) -> Bool { !entry.isPast(at: now) || entry.onDemand }
+    static func halfHour(_ date: Date, roundingUp: Bool = false) -> Date {
+        Date(timeIntervalSinceReferenceDate: (date.timeIntervalSinceReferenceDate / 1800).rounded(roundingUp ? .up : .down) * 1800)
+    }
+    /// The programme to land on in a row: the one showing at `time`, else the nearest one on screen. Programmes that
+    /// can no longer be watched take focus too (greyed out), so Up and Down always have something directly beneath.
+    static func landing(in entries: [GuideEntry], at time: Date, from start: Date, to end: Date) -> GuideEntry? {
+        let shown = segments(entries, from: start, to: end).compactMap(\.entry)
+        func distance(_ entry: GuideEntry) -> TimeInterval {
+            // The programme showing at `time` wins outright, including over one that ends exactly then.
+            entry.isOnAir(at: time) ? -1 : min(abs(entry.start.timeIntervalSince(time)), abs(entry.end.timeIntervalSince(time)))
+        }
+        return shown.min { distance($0) < distance($1) }
+    }
+    /// Left or Right from `focused`: where the window moves and what to focus there. Nil when the next programme
+    /// that way is already on screen (the focus engine moves to it) or there is none in the guide.
+    static func page(_ entries: [GuideEntry], from focused: GuideEntry, forward: Bool, start: Date, span: TimeInterval,
+                     earliest: Date, latest: Date) -> (start: Date, entry: GuideEntry)? {
+        let shown = Set(segments(entries, from: start, to: start.addingTimeInterval(span)).compactMap { $0.entry?.id })
+        let candidates = entries.filter { $0.end > earliest && $0.start < latest }
+        let lastStart = max(earliest, latest.addingTimeInterval(-span))
+        // Nothing beyond a long programme: scroll through it, keeping it focused, so the other rows can be seen.
+        let step = max(1800, halfHour(start.addingTimeInterval(span)).timeIntervalSince(start) - 1800)
+        if forward {
+            guard let next = candidates.first(where: { $0.start >= focused.end }) else {
+                let target = min(start.addingTimeInterval(step), lastStart, halfHour(focused.end.addingTimeInterval(-1800)))
+                return focused.end > start.addingTimeInterval(span) && target > start ? (target, focused) : nil
+            }
+            guard !shown.contains(next.id) else { return nil }
+            let target = min(halfHour(next.start), lastStart)
+            return target > start ? (target, next) : nil
+        } else {
+            guard let previous = candidates.last(where: { $0.end <= focused.start }) else {
+                let target = max(start.addingTimeInterval(-step), earliest, halfHour(focused.start))
+                return focused.start < start && target < start ? (target, focused) : nil
+            }
+            guard !shown.contains(previous.id) else { return nil }
+            let target = max(halfHour(previous.end, roundingUp: true).addingTimeInterval(-span), earliest)
+            return target < start ? (target, previous) : nil
         }
     }
     /// Lay one channel out as contiguous programme and gap segments clipped to a time window.
