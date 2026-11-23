@@ -89,6 +89,9 @@ struct ChannelGuideView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        // Leaving the guide, or switching profile, abandons a programme still being looked up.
+        .onDisappear { cancelOpening() }
+        .onReceive(NotificationCenter.default.publisher(for: ProfileStore.changed)) { _ in cancelOpening() }
         .task(id: channels.map(\.id)) {
             guard !channels.isEmpty else { return }
             while !Task.isCancelled {
@@ -403,7 +406,7 @@ struct ChannelGuideView: View {
         return Set([above, below].compactMap { $0 })
     }
     private func streamCell(_ stream: AdditionalLiveStream, width: CGFloat, reachable: Bool) -> some View {
-        Button { playStream(stream) } label: {
+        Button { cancelOpening(); playStream(stream) } label: {
             VStack(alignment: .leading, spacing: 3) {
                 Text(stream.title).font(.system(size: 24, weight: .semibold)).lineLimit(1)
                 Text(stream.id == "uk_bbc_stream_041" ? "Ultra HD events when on air" : "Live events and extra coverage when on air")
@@ -417,19 +420,20 @@ struct ChannelGuideView: View {
         .frame(width: max(6, width - 6), height: rowHeight).padding(.trailing, 6)
         .accessibilityLabel("\(stream.title), live events when on air")
     }
+    private func cancelOpening() { opening?.cancel(); opening = nil }
     private func activate(_ entry: GuideEntry, on channel: LiveChannel) {
+        cancelOpening()   // a new choice replaces a programme still being looked up
         let now = Date()
         if entry.isOnAir(at: now) { playLive(channel); return }
         // Finished and on iPlayer: play the episode straight away; the details card is the fallback.
         guard entry.isPast(at: now), entry.onDemand, let id = entry.episodeID else { selection = GuideSelection(entry: entry, channel: channel); return }
-        opening?.cancel()
         opening = Task { @MainActor in
             do {
                 let programme = try await BBCService().programme(id)
                 try Task.checkCancellation()
                 playEpisode(programme)
             } catch { if !Task.isCancelled { selection = GuideSelection(entry: entry, channel: channel) } }
-            opening = nil
+            if !Task.isCancelled { opening = nil }
         }
     }
 }
@@ -525,6 +529,7 @@ private struct GuideEntryDetail: View {
     let playEpisode: (Programme) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var opening = false
+    @State private var lookup: Task<Void, Never>?
     @State private var error: String?
     private var past: Bool { selection.entry.isPast(at: Date()) }
     var body: some View {
@@ -549,6 +554,7 @@ private struct GuideEntryDetail: View {
             }.buttonStyle(OutlinedActionButtonStyle())
         }.padding(70)
         .onExitCommand { dismiss() }
+        .onDisappear { lookup?.cancel() }   // closed while still looking the episode up
     }
     /// Let this sheet leave before the player cover is presented over the Live page.
     private func close(then action: @escaping () -> Void) {
@@ -560,11 +566,12 @@ private struct GuideEntryDetail: View {
     }
     private func watch(_ id: String) {
         opening = true; error = nil
-        Task { @MainActor in
+        lookup = Task { @MainActor in
             do {
                 let programme = try await BBCService().programme(id)
+                try Task.checkCancellation()
                 close { playEpisode(programme) }
-            } catch { self.error = error.localizedDescription; opening = false }
+            } catch { if !Task.isCancelled { self.error = error.localizedDescription; opening = false } }
         }
     }
 }

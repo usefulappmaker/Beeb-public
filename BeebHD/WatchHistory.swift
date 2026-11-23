@@ -23,7 +23,21 @@ struct EpisodeProgress: Codable, Equatable {
     var duration: Double
     var completed: Bool
     var updatedAt: Date
+    /// When the episode was last marked unwatched; a completion from before then no longer counts.
+    var resetAt: Date? = nil
     var fraction: Double { min(1, max(0, position / max(1, duration))) }
+    /// The newer progress, keeping a completion from either side unless it predates a Mark unwatched.
+    static func combine(_ a: EpisodeProgress, _ b: EpisodeProgress) -> EpisodeProgress {
+        var newer = a.updatedAt >= b.updatedAt ? a : b
+        let older = a.updatedAt >= b.updatedAt ? b : a
+        newer.resetAt = [a.resetAt, b.resetAt].compactMap { $0 }.max()
+        if older.completed, !newer.completed, newer.resetAt.map({ older.updatedAt > $0 }) ?? true {
+            newer.completed = true
+            // A moment newer, so the completion also wins on the server and the other Apple TVs.
+            newer.updatedAt = newer.updatedAt.addingTimeInterval(0.001)
+        }
+        return newer
+    }
 }
 
 enum EpisodeSequence {
@@ -136,7 +150,7 @@ enum EpisodeSequence {
     /// Mark watched / Mark unwatched on the episode screen. Unwatched forgets the episode's progress.
     func setWatched(_ episodeID: String, _ watched: Bool, now: Date = Date()) {
         if watched {
-            var value = episodes[episodeID] ?? EpisodeProgress(position: 1, duration: 1, completed: true, updatedAt: now)
+            var value = episodes[episodeID] ?? EpisodeProgress(position: 1, duration: 1, completed: true, updatedAt: now, resetAt: episodesRemoved[episodeID])
             value.completed = true; value.position = value.duration; value.updatedAt = now
             episodes[episodeID] = value; episodesRemoved[episodeID] = nil
         } else {
@@ -145,7 +159,7 @@ enum EpisodeSequence {
         persistEpisodes()
     }
     private func recordEpisode(_ id: String, position: Double, duration: Double, completed: Bool, now: Date) {
-        var value = episodes[id] ?? EpisodeProgress(position: 0, duration: duration, completed: false, updatedAt: now)
+        var value = episodes[id] ?? EpisodeProgress(position: 0, duration: duration, completed: false, updatedAt: now, resetAt: episodesRemoved[id])
         if abs(value.position - position) < 0.5, value.duration == duration, value.completed || !completed { return }
         value.position = min(position, duration); value.duration = duration
         value.completed = value.completed || completed; value.updatedAt = now
@@ -240,33 +254,44 @@ enum EpisodeSequence {
               profile == ProfileStore.currentID else { return }   // ignore a reply for a profile we've switched away from
         adopt(reply)
         let episodeRecords: [[String: Any]] = episodes.map { id, value in
-            ["id": id, "position": value.position, "duration": value.duration, "completed": value.completed,
-             "updatedAt": value.updatedAt.timeIntervalSinceReferenceDate]
+            var record: [String: Any] = ["id": id, "position": value.position, "duration": value.duration, "completed": value.completed,
+                                         "updatedAt": value.updatedAt.timeIntervalSinceReferenceDate]
+            if let reset = value.resetAt { record["resetAt"] = reset.timeIntervalSinceReferenceDate }
+            return record
         }
         guard let episodeReply = await BeebSyncClient.exchange(kind: "episodes", profile: profile, records: episodeRecords,
                                                                removed: episodesRemoved.mapValues { $0.timeIntervalSinceReferenceDate }),
               profile == ProfileStore.currentID else { return }
         adoptEpisodes(episodeReply)
     }
-    /// Per episode the newest change wins; Mark unwatched (a removal) wins over progress that isn't newer.
+    /// Per episode the newest change wins, except that completion is sticky; Mark unwatched (a removal) wins over
+    /// anything that isn't newer, so it is applied before local and remote progress are combined.
     func adoptEpisodes(_ reply: [String: Any]) {
-        var merged = episodes
-        for item in reply["records"] as? [[String: Any]] ?? [] {
-            guard let id = item["id"] as? String, let duration = item["duration"] as? Double, duration > 0, duration.isFinite,
-                  let position = item["position"] as? Double, position.isFinite else { continue }
-            let value = EpisodeProgress(position: max(0, min(position, duration)), duration: duration,
-                                        completed: item["completed"] as? Bool ?? false,
-                                        updatedAt: Date(timeIntervalSinceReferenceDate: item["updatedAt"] as? Double ?? 0))
-            if merged[id].map({ value.updatedAt > $0.updatedAt }) ?? true { merged[id] = value }
-        }
         var gone = episodesRemoved
         for (id, t) in reply["removed"] as? [String: Double] ?? [:] {
             let date = Date(timeIntervalSinceReferenceDate: t)
             if gone[id].map({ date > $0 }) ?? true { gone[id] = date }
         }
-        for (id, t) in gone {
-            if let value = merged[id] { if value.updatedAt > t { gone[id] = nil } else { merged[id] = nil } }
+        func surviving(_ id: String, _ value: EpisodeProgress) -> EpisodeProgress? {
+            guard let reset = gone[id] else { return value }
+            guard value.updatedAt > reset else { return nil }
+            var value = value
+            value.resetAt = max(value.resetAt ?? reset, reset)
+            return value
         }
+        var merged = [String: EpisodeProgress]()
+        for (id, value) in episodes { merged[id] = surviving(id, value) }
+        for item in reply["records"] as? [[String: Any]] ?? [] {
+            guard let id = item["id"] as? String, let duration = item["duration"] as? Double, duration > 0, duration.isFinite,
+                  let position = item["position"] as? Double, position.isFinite else { continue }
+            let value = EpisodeProgress(position: max(0, min(position, duration)), duration: duration,
+                                        completed: item["completed"] as? Bool ?? false,
+                                        updatedAt: Date(timeIntervalSinceReferenceDate: item["updatedAt"] as? Double ?? 0),
+                                        resetAt: (item["resetAt"] as? Double).map { Date(timeIntervalSinceReferenceDate: $0) })
+            guard let value = surviving(id, value) else { continue }
+            merged[id] = merged[id].map { EpisodeProgress.combine($0, value) } ?? value
+        }
+        for id in merged.keys { gone[id] = nil }   // newer progress supersedes the removal; resetAt remembers it
         if merged.count > Self.episodeLimit {
             for key in merged.sorted(by: { $0.value.updatedAt < $1.value.updatedAt }).prefix(merged.count - Self.episodeLimit).map(\.key) { merged[key] = nil }
         }

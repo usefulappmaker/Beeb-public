@@ -79,6 +79,43 @@ import Foundation
         precondition(marks.progress(for: two.id) == nil, "A newer Mark unwatched from another Apple TV removes local progress")
         marks.adoptEpisodes(["records": [["id": three.id, "position": 1.0, "duration": 100.0, "completed": false, "updatedAt": now - 1000]], "removed": [:]])
         precondition(marks.progress(for: three.id)?.completed == true, "Older remote progress doesn't overwrite a newer local mark")
+        // Completion is sticky between Apple TVs, whichever change is newer, until the episode is marked unwatched.
+        func remote(_ id: String, _ completed: Bool, _ at: Double, reset: Double? = nil) -> [String: Any] {
+            var record: [String: Any] = ["id": id, "position": completed ? 100.0 : 10.0, "duration": 100.0, "completed": completed, "updatedAt": at]
+            if let reset { record["resetAt"] = reset }
+            return record
+        }
+        func adopt(_ records: [[String: Any]], removed: [String: Double] = [:]) { marks.adoptEpisodes(["records": records, "removed": removed]) }
+        adopt([remote(three.id, false, now + 200)])
+        precondition(marks.progress(for: three.id).map { $0.completed && $0.position == 10 } == true, "Newer part-watched progress from another Apple TV keeps the watched mark")
+        precondition(marks.progress(for: three.id)!.updatedAt.timeIntervalSinceReferenceDate > now + 200, "The kept mark is newer, so it reaches the server and the other Apple TV")
+        let settled = marks.progress(for: three.id)!
+        adopt([remote(three.id, true, settled.updatedAt.timeIntervalSinceReferenceDate)])
+        precondition(marks.progress(for: three.id)!.updatedAt == settled.updatedAt, "An echoed record doesn't keep changing")
+        adopt([remote("b0000098", false, now + 20)]); adopt([remote("b0000098", true, now + 10)])
+        precondition(marks.progress(for: "b0000098").map { $0.completed && $0.position == 10 } == true, "An older completion arriving late marks the episode watched")
+        adopt([], removed: [three.id: now + 300])
+        precondition(marks.progress(for: three.id) == nil, "Mark unwatched on another Apple TV clears the mark")
+        adopt([remote("b0000097", true, now + 10)]); adopt([remote("b0000097", false, now + 40, reset: now + 30)])
+        precondition(marks.progress(for: "b0000097")?.completed == false, "Marked unwatched then part-watched elsewhere clears an earlier completion")
+        adopt([remote("b0000096", true, now + 10)]); adopt([remote("b0000096", false, now + 40)], removed: ["b0000096": now + 30])
+        precondition(marks.progress(for: "b0000096")?.completed == false, "A removal between a completion and newer progress clears the completion")
+        adopt([remote("b0000097", true, now + 50, reset: now + 30)])
+        precondition(marks.progress(for: "b0000097")?.completed == true, "Finishing it again after Mark unwatched counts")
+        marks.setWatched(nextSeries.id, true); marks.setWatched(nextSeries.id, false)
+        marks.update(episode: nextSeries, show: show, next: nil, position: 60, duration: 3600, now: Date().addingTimeInterval(1))
+        precondition(marks.progress(for: nextSeries.id)?.resetAt != nil, "Playing again after Mark unwatched remembers it for the other Apple TVs")
+        adopt([remote(nextSeries.id, true, now - 500)])
+        precondition(marks.progress(for: nextSeries.id)?.completed == false, "A completion from before Mark unwatched doesn't return")
+        // Progress saved before resetAt existed still loads.
+        let legacy = try! JSONDecoder().decode(EpisodeProgress.self, from: Data(#"{"position":1,"duration":2,"completed":true,"updatedAt":0}"#.utf8))
+        precondition(legacy.completed && legacy.resetAt == nil, "Earlier saved progress decodes")
+        // Removing a profile leaves none of its data, and nobody else's is touched.
+        for id in ["gone", "kept"] { for key in ["continueWatching-v1-", "continueWatching-removed-v1-", "savedShows-v3-", "savedShows-meta-v1-", "favouriteChannels-v1-", "episodeProgress-v1-", "episodeProgress-removed-v1-"] { episodeDefaults.set(Data([1]), forKey: key + id) } }
+        ProfileStore.removeLocalData(for: "gone", in: episodeDefaults)
+        let left = episodeDefaults.dictionaryRepresentation().keys
+        precondition(!left.contains { $0.hasSuffix("-gone") } && left.filter { $0.hasSuffix("-kept") }.count == 7, "Removing a profile clears only its own stores")
+        marks.setWatched(three.id, true)
         let reloaded = WatchHistory(defaults: episodeDefaults)
         precondition(reloaded.progress(for: three.id)?.completed == true && reloaded.progress(for: one.id) == nil, "Episode marks are kept")
         print("PASS: resume persistence, compact programme history, completion/up-next, reverse series order, broadcast dates, restart, removal, invalid-time and corruption recovery, per-episode watched marks and their sync")
