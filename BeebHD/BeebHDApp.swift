@@ -24,10 +24,31 @@ import SwiftUI
 // title always; synopsis only on the focused card (like the official app).
 struct ProgrammeCard: View {
     let programme: Programme
+    /// Watched episodes get a WATCHED mark and dimmed artwork; part-watched ones a progress line.
+    var progress: EpisodeProgress? = nil
     @Environment(\.isFocused) private var focused
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             ProgrammeThumbnail(url: programme.image, uhd: programme.uhdListed == true, hdr: programme.hdrListed == true)
+                .opacity(progress?.completed == true && !focused ? 0.55 : 1)
+                .overlay(alignment: .topLeading) {
+                    if progress?.completed == true {
+                        Label("WATCHED", systemImage: "checkmark").font(.system(size: 17, weight: .bold)).labelStyle(.titleAndIcon)
+                            .padding(.horizontal, 10).padding(.vertical, 5).foregroundStyle(.white)
+                            .background(Color(red: 0.12, green: 0.55, blue: 0.27), in: Capsule()).padding(10)
+                    }
+                }
+                .overlay(alignment: .bottom) {
+                    if let progress, !progress.completed, progress.fraction > 0.02 {
+                        GeometryReader { geometry in
+                            ZStack(alignment: .leading) {
+                                Rectangle().fill(.white.opacity(0.3))
+                                Rectangle().fill(Color.pink).frame(width: geometry.size.width * progress.fraction)
+                            }
+                        }.frame(height: 6).clipShape(Capsule()).padding(.horizontal, 10).padding(.bottom, 10)
+                    }
+                }
+                .accessibilityValue(progress?.completed == true ? "Watched" : progress.map { $0.fraction > 0.02 ? "\(Int($0.fraction * 100))% watched" : "" } ?? "")
                 .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
             Text(programme.episodeSubtitle ?? programme.title).font(.system(size: 28, weight: .semibold)).lineLimit(1)
                 .foregroundStyle(focused ? Color.white : Color.white.opacity(0.75)).padding(.top, 8)
@@ -98,6 +119,10 @@ struct DetailView: View {
                         .accessibilityLabel(playback.loading ? "Finding the best stream" : "Play at the best available quality")
                     if !playback.loading, resume > 0 {
                         Button("Start over") { playback.start(programme, history: history, show: show, restart: true) { state.playing = true } }
+                    }
+                    if !playback.loading {
+                        let watched = history.progress(for: programme.id)?.completed == true
+                        Button(watched ? "Mark unwatched" : "Mark watched") { history.setWatched(programme.id, !watched) }
                     }
                     if playback.loading { Button("Cancel") { playback.stop() } }
                     if let show { ProgrammeBookmarkButton(show: show, library: library) }

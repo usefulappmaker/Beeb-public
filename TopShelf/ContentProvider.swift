@@ -76,7 +76,15 @@ final class ContentProvider: TVTopShelfContentProvider {
         }
     }
     @MainActor private func liveSection(_ channels: [LiveShelfChannel]) -> TVTopShelfItemCollection<TVTopShelfSectionedItem> {
-        let items = channels.compactMap { channel -> TVTopShelfSectionedItem? in
+        // Favourite channels first, in the profile's order (BBC One/Two regions count as one channel).
+        let favourites = TopShelfShared.snapshot().favouriteChannels ?? []
+        func canonical(_ id: String) -> String { id.hasPrefix("bbc_one_") ? "bbc_one_london" : id.hasPrefix("bbc_two_") ? "bbc_two_england" : id }
+        let rank = Dictionary(favourites.enumerated().map { ($0.element, $0.offset) }, uniquingKeysWith: { first, _ in first })
+        let ordered = channels.enumerated().sorted { a, b in
+            let ra = rank[canonical(a.element.id)] ?? Int.max, rb = rank[canonical(b.element.id)] ?? Int.max
+            return ra != rb ? ra < rb : a.offset < b.offset
+        }.map(\.element)
+        let items = ordered.compactMap { channel -> TVTopShelfSectionedItem? in
             guard let url = LiveChannelLink.url(for: channel.id) else { return nil }
             let item = TVTopShelfSectionedItem(identifier: channel.id)
             item.title = channel.title; item.imageShape = .hdtv

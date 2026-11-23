@@ -19,7 +19,8 @@ enum TopShelfPublisher {
             guard let url = BeebLink.showURL(show.id) else { return nil }
             return TopShelfEntry(id: show.id, title: show.title, image: show.image, displayURL: url, playURL: url)
         }
-        if TopShelfShared.write(TopShelfSnapshot(continueWatching: continueEntries, saved: savedEntries)) {
+        let favourites = TopShelfShared.snapshot().favouriteChannels   // written by FavouriteChannels; keep it
+        if TopShelfShared.write(TopShelfSnapshot(continueWatching: continueEntries, saved: savedEntries, favouriteChannels: favourites)) {
             TVTopShelfContentProvider.topShelfContentDidChange()
         }
     }

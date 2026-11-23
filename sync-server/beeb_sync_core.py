@@ -2,7 +2,7 @@
 """Beeb household sync: storage + merge logic shared by the AppDaemon app and the standalone server.
 
 Protocol (see docs/SYNC.md): the app POSTs JSON
-    {"profile": "<id>", "kind": "history" | "saved" | "profiles" | "settings", "records": [...], "removed": {"<id>": <time>}}
+    {"profile": "<id>", "kind": "history" | "saved" | "profiles" | "settings" | "channels" | "episodes", "records": [...], "removed": {"<id>": <time>}}
 with header X-Beeb-Key: <shared key>. The server merges and replies with the merged {"records", "removed"}.
     {"profile": "<id>", "purge": true} deletes everything stored for that profile (sent when a profile is removed).
 Records are opaque JSON objects with "id" and "updatedAt" (seconds since 2001-01-01, Swift's default date encoding).
@@ -16,7 +16,7 @@ import threading
 import time
 
 SWIFT_EPOCH = 978307200  # 2001-01-01 in Unix time
-LIMITS = {"history": 60, "saved": 300, "profiles": 50, "settings": 20}
+LIMITS = {"history": 60, "saved": 300, "profiles": 50, "settings": 20, "channels": 200, "episodes": 600}
 REMOVED_DAYS = 90
 SLUG = re.compile(r"^[a-z0-9_]{1,32}$")
 

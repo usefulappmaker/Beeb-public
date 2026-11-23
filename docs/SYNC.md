@@ -92,7 +92,7 @@ from elsewhere, put the server behind HTTPS (for example a reverse proxy) or a V
 {"profile": "main", "kind": "history", "records": [{"id": "…", "updatedAt": 816640984.6, "...": "..."}], "removed": {"<id>": 816641000.0}}
 ```
 
-- `kind`: `history` (Continue Watching), `saved`, `profiles` (sent with `profile: "household"`), `settings`
+- `kind`: `history` (Continue Watching), `saved`, `profiles` (sent with `profile: "household"`), `settings`, `channels` (favourite channels: `id`, `position`), `episodes` (per-episode progress: `id`, `position`, `duration`, `completed`)
   (household settings such as the kids PIN, also `profile: "household"`).
 - Records are opaque objects with an `id` and `updatedAt` (seconds since 2001-01-01).
 - Merge per `(profile, kind)`: newest `updatedAt` per id wins; a removal beats records that aren't newer than it;
