@@ -580,6 +580,12 @@ final class PlayerContainerViewController: UIViewController, UIGestureRecognizer
         infoVisible ? [infoController] : [playerController]
     }
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive press: UIPress) -> Bool {
+        if gestureRecognizer !== backGesture, press.type == .select {
+            // Note the press without claiming it: a recognised tap cancels the press for AVKit,
+            // so the transport bar's own buttons (Watch from start, Live, RED, Info) never fired.
+            nonBackInteraction()
+            return false
+        }
         if gestureRecognizer === backGesture, presentedViewController != nil {
             backExitArmed = true
             return false // Native Back dismisses the stream menu/error first.
