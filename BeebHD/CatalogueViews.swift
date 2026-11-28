@@ -833,7 +833,8 @@ struct CatalogueShowView: View {
                             Text(target.label == "Resume" ? "Continue" : target.label).font(.system(size: 22)).foregroundStyle(.secondary)
                             Text(target.subtitle).font(.system(size: 30, weight: .semibold)).lineLimit(1)
                         }
-                    }.padding(.vertical, 8).focusSection()
+                    }.padding(.vertical, 8)
+                        .frame(maxWidth: .infinity, alignment: .leading).focusSection()   // full width, so Down from Saved lands here
                 }
                 if state.show == nil && state.error == nil { ProgressView("Getting series and episodes…") }
                 if let error = state.error { Text(error).foregroundStyle(.orange); Button("Retry") { state.retry += 1 } }
