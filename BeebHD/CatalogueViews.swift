@@ -34,6 +34,7 @@ struct HomeView: View {
     @State private var shelfLink: TopShelfLinkRequest?
     @FocusState private var focusedTab: BeebTab?
     @FocusState private var menuIconFocused: Bool
+    @FocusState private var profileItemFocused: Bool
     @State private var sidebarOpen = false
     @State private var iconFocusRequest = 0
     @ObservedObject private var profiles = ProfileStore.shared
@@ -139,7 +140,9 @@ struct HomeView: View {
             case .up:
                 if position == 0 { focusedTab = nil; menuIconFocused = true }
                 else { focusedTab = values[position - 1] }
-            case .down: focusedTab = values[min(values.count - 1, position + 1)]
+            case .down:
+                if position == values.count - 1 && showsSidebarProfileItem { focusedTab = nil; profileItemFocused = true }
+                else { focusedTab = values[min(values.count - 1, position + 1)] }
             case .right: closeSidebar()
             default: break
             }
@@ -151,7 +154,8 @@ struct HomeView: View {
                 ForEach(visibleTabs.filter { $0 != .settings }, id: \.self) { menuItem($0) }
                 Spacer(minLength: 24)
                 Divider().overlay(.white.opacity(0.12))
-                menuItem(.settings)
+                if visibleTabs.contains(.settings) { menuItem(.settings) }
+                else if showsSidebarProfileItem { sidebarProfileItem }
             }.padding(18).frame(width: 296, height: max(600, geometry.size.height - 196))
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28))
                 .overlay { RoundedRectangle(cornerRadius: 28).strokeBorder(.white.opacity(0.18), lineWidth: 1) }
@@ -160,6 +164,31 @@ struct HomeView: View {
                 .onAppear { focusedTab = tab }
                 .onExitCommand { closeSidebar() }
         }.ignoresSafeArea()
+    }
+    /// Kids profiles hide Settings, which is where the sidebar layout switches profile, so offer the
+    /// Who's watching picker in its place (the top menu bar has its own profile pill).
+    private var showsSidebarProfileItem: Bool { !visibleTabs.contains(.settings) && profiles.profiles.count > 1 }
+    private var sidebarProfileItem: some View {
+        Button {
+            closeSidebar()
+            profiles.pickerRequired = false
+            showProfilePicker = true
+        } label: {
+            Label(profiles.currentProfile.name, systemImage: "person.crop.circle.fill").font(.system(size: 25, weight: .semibold))
+                .labelStyle(.titleAndIcon).frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 20).frame(height: 68)
+                .foregroundStyle(profileItemFocused ? Color.black : .white.opacity(0.75))
+                .background(profileItemFocused ? Color.white : .clear, in: RoundedRectangle(cornerRadius: 18))
+                .shadow(color: .pink.opacity(profileItemFocused ? 0.55 : 0), radius: 16)
+        }.buttonStyle(BeebTabStyle()).focused($profileItemFocused).focusEffectDisabled()
+            .accessibilityLabel("Profile \(profiles.currentProfile.name). Select to switch profile.")
+            .onMoveCommand { direction in
+                switch direction {
+                case .up: profileItemFocused = false; focusedTab = visibleTabs.last
+                case .right: closeSidebar()
+                default: break
+                }
+            }
     }
     private func focusNavigation() {
         // Cancel a pending Down-to-hero request before moving focus back to the menu.
@@ -178,6 +207,7 @@ struct HomeView: View {
         guard sidebarOpen else { return }
         focusedTab = nil
         menuIconFocused = false
+        profileItemFocused = false
         withAnimation(.easeOut(duration: 0.2), completionCriteria: .removed) {
             sidebarOpen = false
         } completion: {
