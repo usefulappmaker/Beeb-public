@@ -795,13 +795,13 @@ struct CatalogueShowView: View {
     @FocusState private var focusedEpisode: String?
     @EnvironmentObject private var history: WatchHistory
     /// What the big button should open: resume the part-watched episode, the next one after a finished one,
-    /// or the first episode of the oldest series.
+    /// or the first episode of the selected series (the newest by default), so it always matches the grid below.
     private var watchTarget: (label: String, programme: Programme, subtitle: String)? {
         if let record = history.records.first(where: { $0.id == current.id }) {
             if !record.completed { return ("Resume", record.episode.programme, record.episode.subtitle) }
             if let next = record.nextEpisode { return ("Next episode", next.programme, next.subtitle) }
         }
-        guard let series = orderedSeries.first, let first = EpisodeSequence.ordered(series.episodes).first else { return nil }
+        guard let first = selectedEpisodes.first else { return nil }
         return ("Start watching", first.programme, first.subtitle)
     }
     var current: CatalogueShow { state.show ?? show }
